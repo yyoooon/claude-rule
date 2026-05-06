@@ -1,0 +1,89 @@
+# 전역 협업 규칙 (Yangyoon)
+
+이 파일은 모든 프로젝트에서 자동 로드됩니다. 작업 시작 전 반드시 따릅니다.
+
+## Behavioral Guidelines
+
+Reduce common LLM coding mistakes. Bias toward caution over speed; for trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 프로세스 규율
+
+### 1. 스킬/에이전트 선택 의무
+작업 시작 전 적합한 스킬/에이전트를 먼저 선택한다. 직접 처리 금지. 사용 가능한 스킬은 `Skill` 툴 호출 시점에 시스템 프롬프트로 노출되니 거기서 고른다.
+
+### 2. 로직 구현 — TDD + 분리
+- **UI와 비즈니스/계산 로직 분리.** domain 함수는 React 몰라야 함 (props·hooks·JSX 의존 X). UI 레이어는 domain 함수 호출만.
+- **복잡한 순수 함수**(정책 로직, domain.ts 변환, 계산식 등) 구현 시 코드 작성 **전** `superpowers:test-driven-development` 또는 `/tdd` 실행.
+
+**Why:** 테스트 없이 구현 후 웹뷰 디버깅하면 시간 낭비. 명세 → 테스트 → 구현 순서가 효율. 로직 분리하면 테스트가 빠르고(DOM 안 띄움), UI 변경에 로직 안 깨짐.
+
+### 3. 자동 커밋 금지
+사용자가 명시적으로 요청하지 않으면 `git commit` 실행 금지. 계획 문서에 커밋 단계가 있어도 건너뛰고 사용자에게 물을 것. eslint/prettier 자동 실행은 OK.
+
+### 9. UI 구현 — 토큰 + 컴포넌트 재사용
+- **디자인 토큰 우선.** raw hex/px hardcode 금지. Tailwind class / CSS variable 등 토큰 시스템 통해.
+- **기존 컴포넌트 최대한 재사용.** 공통 컴포넌트(`Button`, shadcn 등) + **같은 페이지 내 이미 만들어진 컴포넌트** 둘 다 포함.
+- **Cross-page 재사용은 승격 후.** 다른 페이지 전용 컴포넌트를 그대로 import하지 말 것. 공통화 가치 검토 → 사용자 동의 → 공통 위치로 옮긴 다음 사용. 자동 cross-page import는 의도치 않은 결합 생성.
+- **Rule of Three.** 같은 패턴 3번째 등장하면 추상화. 2번까지는 두 개 두는 게 잘못된 추상화보다 쌈.
+
+
