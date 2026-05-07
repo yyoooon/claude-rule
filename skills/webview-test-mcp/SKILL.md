@@ -9,30 +9,38 @@ description: Use when working with webview-test MCP on Android — message says 
 
 webview-test MCP 서버 자체 instructions(체이닝/디바이스 선택 절차/에러 진단)는 자동 로드된다. 이 스킬은 그 위에 얹는 **개인 환경 디폴트**와 **검증된 트릭**만 담는다.
 
-**핵심:** Wi-Fi 디바이스(192.168.100.212:5555) 디폴트, `webview_connect`는 항상 `socketIndex: 0`, Next.js SPA 라우트 변경은 `location.href` 강제.
+**핵심:** Wi-Fi 디바이스 디폴트(IP는 매번 동적 조회), `webview_connect`는 항상 `socketIndex: 0`, Next.js SPA 라우트 변경은 `location.href` 강제.
 
 ## When to Use
 
-- 메시지에 "앱 연결" / "웹뷰 연결" 등장 → ADB 단축 절차 실행
+- 메시지에 "앱 연결" / "웹뷰 연결" 등장 → ADB 연결 절차 실행
 - webview-test MCP 첫 호출 직전 (connect 전 룰 확인)
 - `MULTIPLE_WEBVIEWS` 에러 본 직후
 - `webview_flow` goto 후 화면이 그대로 / waitFor timeout (Next.js)
 - 디바이스 여러 대인데 어느 걸 쓸지 모호할 때
 
-## ADB 연결 단축 ("앱 연결" / "웹뷰 연결")
+## ADB 연결 절차 ("앱 연결" / "웹뷰 연결")
+
+**IP는 절대 하드코딩하지 말 것.** 디바이스 IP는 DHCP라 매번 바뀐다. 항상 `adb shell`로 실제 IP 조회 후 연결.
 
 메시지에 위 표현이 등장하면 **확인 없이 끝까지** 실행:
 
-1. `adb connect 192.168.100.212:5555` 시도
-2. 실패 시 `adb devices`로 USB 시리얼 확인
-3. USB 기기 있으면 `adb -s <시리얼> tcpip 5555 && sleep 2 && adb connect 192.168.100.212:5555`
-4. `adb devices`로 `192.168.100.212:5555  device` 확인 후 결과 보고
+```bash
+# 1. 현재 붙어있는 디바이스 확인
+adb devices
 
-USB조차 안 보이면 **그때만** 사용자에게 USB 연결 요청.
+# 2-A. 이미 <IP>:5555 형태가 device로 보이면 — 이미 Wi-Fi 연결됨, 끝.
 
-## 기본 디바이스 = Wi-Fi (192.168.100.212:5555)
+# 2-B. USB 시리얼만 보이면 — 디바이스 IP 조회 후 Wi-Fi 전환:
+SERIAL=$(adb devices | awk 'NR>1 && $2=="device" && $1 !~ /:/ {print $1; exit}')
+IP=$(adb -s $SERIAL shell ip -f inet addr show wlan0 | grep -oE 'inet [0-9.]+' | awk '{print $2}')
+adb -s $SERIAL tcpip 5555 && sleep 2 && adb connect $IP:5555
+adb devices  # <IP>:5555 device 확인
 
-여러 대 붙어있어도 Wi-Fi 디바이스가 있으면 **질문 없이** 사용. Wi-Fi 끊겨 있으면 위 단축 절차부터.
+# 2-C. 아무것도 없으면 — 그때만 USB 연결 요청
+```
+
+**한 번 실패한 IP는 다시 시도하지 말 것.** 이전 세션 IP가 메모/머릿속에 있어도 timeout이면 즉시 `adb shell ip addr` 조회로 갱신.
 
 ## webview_connect 호출 — 첫 콜부터 `socketIndex: 0`
 
@@ -69,20 +77,20 @@ webview_flow({
 
 | 증상 | 원인 | 고침 |
 |---|---|---|
+| `adb connect <IP>` 반복 timeout | stale IP 하드코딩 / 캐시 | `adb shell ip addr show wlan0`로 실제 IP 먼저 |
 | `MULTIPLE_WEBVIEWS` 에러 → 재호출 왕복 | `webview_connect` 인자 누락 | `{ socketIndex: 0 }` 명시 |
 | `goto` 후 화면 그대로 / waitFor timeout | Next.js router가 pushState 못 받음 | `evaluate: location.href = ...` |
-| "USB 연결해주세요"부터 묻고 끝 | Wi-Fi 단축 시도 누락 | `adb connect 192.168.100.212:5555` 먼저 |
-| "어느 디바이스 쓸까요?" 질문 | Wi-Fi 디폴트 룰 미적용 | 192.168.100.212:5555 우선 |
+| "USB 연결해주세요"부터 묻고 끝 | `adb devices` 먼저 안 봄 | 항상 `adb devices`부터 |
 
 ## Quick Reference
 
 ```bash
-# 연결 시퀀스
-adb connect 192.168.100.212:5555
-# 실패 시
-adb devices                                      # USB 시리얼 확인
-adb -s <시리얼> tcpip 5555 && sleep 2 && adb connect 192.168.100.212:5555
-adb devices                                      # 192.168.100.212:5555 device 확인
+# 디바이스 IP 조회 (DHCP라 매번 바뀜 — 절대 하드코딩 금지)
+adb -s <시리얼> shell ip -f inet addr show wlan0 | grep -oE 'inet [0-9.]+' | awk '{print $2}'
+
+# Wi-Fi 전환 + 연결
+adb -s <시리얼> tcpip 5555 && sleep 2 && adb connect <IP>:5555
+adb devices  # <IP>:5555 device 확인
 ```
 
 ```js
