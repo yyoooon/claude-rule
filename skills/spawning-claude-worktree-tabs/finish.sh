@@ -96,17 +96,36 @@ echo "Mode:          $([[ $NO_MERGE -eq 1 ]] && echo 'cleanup only' || echo 'mer
 echo
 
 # --- helper: find cmux surface by branch-name title prefix ---
+# `list-pane-surfaces` only returns the active pane's surfaces, so we walk
+# every pane in the workspace and inspect their surfaces for a matching title.
 find_surface_by_branch() {
   local branch="$1"
-  cmux --json list-pane-surfaces 2>/dev/null | python3 -c "
-import json, sys
-prefix = sys.argv[1] + ' '
-data = json.load(sys.stdin)
-for s in data.get('surfaces', []):
-    if s.get('title', '').startswith(prefix):
-        print(s['ref'])
-        break
-" "$branch"
+  cmux --json list-panes 2>/dev/null | python3 -c '
+import json, subprocess, sys
+prefix = sys.argv[1] + " "
+try:
+    panes = json.load(sys.stdin).get("panes", [])
+except json.JSONDecodeError:
+    sys.exit(0)
+for p in panes:
+    pane_ref = p.get("ref")
+    if not pane_ref:
+        continue
+    out = subprocess.run(
+        ["cmux", "--json", "list-pane-surfaces", "--pane", pane_ref],
+        capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        continue
+    try:
+        data = json.loads(out.stdout)
+    except json.JSONDecodeError:
+        continue
+    for s in data.get("surfaces", []):
+        if s.get("title", "").startswith(prefix):
+            print(s["ref"])
+            sys.exit(0)
+' "$branch"
 }
 
 # --- per-target loop ---
@@ -128,6 +147,18 @@ for SUFFIX in "${TARGETS[@]}"; do
     SKIPPED+=("$SUFFIX")
     continue
   fi
+
+  # 0. stop dev server (if spawn.sh started one) and clear our scratch files
+  #    so they don't trip the clean-tree check or `git worktree remove`.
+  if [[ -f "$WTREE_ABS/dev.pid" ]]; then
+    DEV_PID=$(cat "$WTREE_ABS/dev.pid" 2>/dev/null || true)
+    if [[ -n "$DEV_PID" ]] && kill -0 "$DEV_PID" 2>/dev/null; then
+      pkill -P "$DEV_PID" 2>/dev/null || true
+      kill "$DEV_PID" 2>/dev/null || true
+      echo "  stopped dev server (PID $DEV_PID)"
+    fi
+  fi
+  rm -f "$WTREE_ABS/dev.log" "$WTREE_ABS/dev.pid"
 
   if [[ $NO_MERGE -eq 0 ]]; then
     # 1. worktree clean?
@@ -153,8 +184,12 @@ for SUFFIX in "${TARGETS[@]}"; do
     fi
   fi
 
-  # 4. remove worktree
-  git worktree remove "$WTREE_REL"
+  # 4. remove worktree (--force in discard mode so untracked files don't block)
+  if [[ $NO_MERGE -eq 1 ]]; then
+    git worktree remove --force "$WTREE_REL"
+  else
+    git worktree remove "$WTREE_REL"
+  fi
 
   # 5. delete branch
   if [[ $NO_MERGE -eq 1 ]]; then

@@ -6,16 +6,27 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: spawn.sh -n <N> [-s suffix1,suffix2,...] [-p prompts-file] [--dry-run]
+Usage: spawn.sh -n <N> [-s suffix1,...] [-p prompts] [--layout <mode>] [--no-dev] [--dry-run]
 
-  -n N            number of tabs to spawn (required)
+  -n N            number of tabs/panes to spawn (required)
   -s suffixes     comma-separated suffix names; missing positions auto-fill (a, b, c, …)
   -p prompts      file with one initial prompt per line (used in order)
+  --layout MODE   how to place each new surface (default: tab)
+                    tab          → new cmux tab (anchored to current)
+                    split-right  → split right of the previously-spawned surface
+                    split-down   → split down of the previously-spawned surface
+                    grid         → 2x2 grid (N=3 only): main TL, P1 BL, P2 TR, P3 BR
+  --no-dev        skip auto install + dev server (just `cd && claude`)
   --dry-run       print the plan without creating anything
 
 Branch:    wt/<current-branch>/<suffix>
 Worktree:  .worktrees/<suffix>
-Port:      3001, 3002, 3003, … (written to each worktree's .env.local)
+Port:      3001, 3002, 3003, … (passed as PORT env var to the dev server)
+
+Auto dev (default ON, when package.json has a "dev" script):
+  Each surface runs `<pm> install && PORT=<port> nohup <pm> dev > dev.log 2>&1 &`
+  before launching claude. PID is saved to .worktrees/<s>/dev.pid so finish.sh
+  can stop it. Package manager auto-detected from lockfile (yarn/pnpm/bun/npm).
 EOF
 }
 
@@ -23,12 +34,16 @@ N=""
 SUFFIXES_ARG=""
 PROMPTS_FILE=""
 DRY_RUN=0
+NO_DEV=0
+LAYOUT="tab"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     -n) N="${2:-}"; shift 2 ;;
     -s) SUFFIXES_ARG="${2:-}"; shift 2 ;;
     -p) PROMPTS_FILE="${2:-}"; shift 2 ;;
+    --layout) LAYOUT="${2:-}"; shift 2 ;;
+    --no-dev) NO_DEV=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown arg: $1" >&2; usage; exit 1 ;;
@@ -37,6 +52,17 @@ done
 
 [[ "$N" =~ ^[0-9]+$ && "$N" -gt 0 ]] \
   || { echo "ERROR: -n <N> required (positive integer)" >&2; exit 1; }
+
+case "$LAYOUT" in
+  tab|split-right|split-down) ;;
+  grid)
+    [[ "$N" -eq 3 ]] \
+      || { echo "ERROR: --layout grid currently supports only -n 3 (got -n $N)" >&2; exit 1; }
+    ;;
+  *)
+    echo "ERROR: --layout must be one of: tab, split-right, split-down, grid (got '$LAYOUT')" >&2
+    exit 1 ;;
+esac
 
 # --- verify state ---
 command -v cmux >/dev/null 2>&1 \
@@ -96,17 +122,102 @@ fi
 ANCHOR_SURFACE=$(cmux --json identify | python3 -c \
   'import json,sys; print(json.load(sys.stdin)["caller"]["surface_ref"])')
 
+# --- detect package manager from lockfile ---
+detect_pm() {
+  local dir="$1"
+  if   [[ -f "$dir/pnpm-lock.yaml" ]]; then echo "pnpm"
+  elif [[ -f "$dir/yarn.lock" ]]; then echo "yarn"
+  elif [[ -f "$dir/bun.lockb" || -f "$dir/bun.lock" ]]; then echo "bun"
+  elif [[ -f "$dir/package-lock.json" ]]; then echo "npm"
+  else echo "npm"
+  fi
+}
+
+# --- build install + dev shell snippet for a worktree, or empty string if N/A ---
+build_dev_block() {
+  local wtree="$1" port="$2"
+  [[ $NO_DEV -eq 1 ]] && return 0
+  [[ -f "$wtree/package.json" ]] || return 0
+  grep -q '"dev"[[:space:]]*:' "$wtree/package.json" || return 0
+
+  local pm install dev
+  pm=$(detect_pm "$wtree")
+  case "$pm" in
+    yarn) install="yarn install"; dev="yarn dev" ;;
+    pnpm) install="pnpm install"; dev="pnpm dev" ;;
+    bun)  install="bun install";  dev="bun run dev" ;;
+    npm|*) install="npm install"; dev="npm run dev" ;;
+  esac
+  # Wrap the launch in `bash -c '...'` so the single quotes shield `$!` from
+  # zsh interactive history expansion (which would error on `!)`). bash inside
+  # the quotes still expands `$!` to the backgrounded dev server's PID.
+  local dev_inner
+  dev_inner="(PORT=$port nohup $dev > dev.log 2>&1 < /dev/null & echo \$!) > dev.pid"
+  printf " && %s && bash -c '%s'" "$install" "$dev_inner"
+}
+
+# --- copy gitignored allowlist ---
+copy_allowlist() {
+  local dest="$1"
+  shopt -s nullglob
+  local patterns=(".env" ".env.local" ".env.development" ".env.production" ".env.staging" ".env.test" ".env.development.local" ".env.production.local" ".mcp.json" ".mcp" ".claude/settings.local.json")
+  for pattern in "${patterns[@]}"; do
+    for src in $pattern; do
+      [[ -e "$src" ]] || continue
+      local target="$dest/$src"
+      mkdir -p "$(dirname "$target")"
+      cp -R "$src" "$target"
+    done
+  done
+  shopt -u nullglob
+}
+
+# --- pre-compute split plan (anchor + direction per iter) for non-tab layouts ---
+# SPLIT_ANCHOR[i] = "main" or "<j>" (index of CREATED_SURFACES = the j-th spawned)
+declare -a SPLIT_ANCHOR=()
+declare -a SPLIT_DIR=()
+
+case "$LAYOUT" in
+  split-right)
+    for ((i=0; i<N; i++)); do
+      [[ $i -eq 0 ]] && SPLIT_ANCHOR[i]="main" || SPLIT_ANCHOR[i]="$((i-1))"
+      SPLIT_DIR[i]="right"
+    done ;;
+  split-down)
+    for ((i=0; i<N; i++)); do
+      [[ $i -eq 0 ]] && SPLIT_ANCHOR[i]="main" || SPLIT_ANCHOR[i]="$((i-1))"
+      SPLIT_DIR[i]="down"
+    done ;;
+  grid)
+    # N=3 only (validated above): main TL, P1 BL, P2 TR, P3 BR
+    SPLIT_ANCHOR=("main" "main" "0")
+    SPLIT_DIR=("down" "right" "right") ;;
+esac
+
 # --- plan ---
 echo "Source branch:  $SOURCE_BRANCH"
 echo "Repo root:      $REPO_ROOT"
 echo "Anchor surface: $ANCHOR_SURFACE"
+echo "Layout:         $LAYOUT"
 [[ $NEEDS_IGNORE -eq 1 ]] && echo "Setup:          will add .worktrees/ to .gitignore (one-time, auto-commit)"
+if [[ $NO_DEV -eq 1 ]]; then
+  echo "Auto dev:       OFF (--no-dev)"
+elif [[ -f package.json ]] && grep -q '"dev"[[:space:]]*:' package.json; then
+  echo "Auto dev:       ON ($(detect_pm .) install + nohup $(detect_pm .) dev → dev.log)"
+else
+  echo "Auto dev:       skipped (no package.json or no \"dev\" script)"
+fi
 echo "Plan:"
 for ((i=0; i<N; i++)); do
   s="${SUFFIXES[i]}"
   port=$((3001 + i))
   prompt_preview="${PROMPTS[i]:-<no prompt>}"
-  echo "  [$((i+1))] .worktrees/$s  ←  wt/$SOURCE_BRANCH/$s  (PORT=$port)  prompt=$prompt_preview"
+  if [[ "$LAYOUT" == "tab" ]]; then
+    placement="new tab"
+  else
+    placement="split ${SPLIT_DIR[i]} of ${SPLIT_ANCHOR[i]}"
+  fi
+  echo "  [$((i+1))] .worktrees/$s  ←  wt/$SOURCE_BRANCH/$s  (PORT=$port)  $placement  prompt=$prompt_preview"
 done
 echo
 
@@ -135,23 +246,9 @@ EOF
   git commit -m "chore: ignore .worktrees/" >/dev/null
 fi
 
-# --- copy gitignored allowlist ---
-copy_allowlist() {
-  local dest="$1"
-  shopt -s nullglob
-  local patterns=(".env" ".env.local" ".env.development" ".env.production" ".env.staging" ".env.test" ".env.development.local" ".env.production.local" ".mcp.json" ".mcp" ".claude/settings.local.json")
-  for pattern in "${patterns[@]}"; do
-    for src in $pattern; do
-      [[ -e "$src" ]] || continue
-      local target="$dest/$src"
-      mkdir -p "$(dirname "$target")"
-      cp -R "$src" "$target"
-    done
-  done
-  shopt -u nullglob
-}
-
 # --- main loop ---
+declare -a CREATED_SURFACES=()  # spawned surface refs, in iteration order
+
 for ((i=0; i<N; i++)); do
   SUFFIX="${SUFFIXES[i]}"
   BRANCH="wt/$SOURCE_BRANCH/$SUFFIX"
@@ -181,24 +278,38 @@ for ((i=0; i<N; i++)); do
     printf 'PORT=%s\n' "$PORT" >> "$ENV_FILE"
   fi
 
-  # 4. spawn cmux tab anchored to current
-  NEW_SURFACE=$(cmux --json tab-action --action new-terminal-right --tab "$ANCHOR_SURFACE" \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["created_surface_ref"])')
+  # 4. create the cmux surface — new tab, or split pane
+  if [[ "$LAYOUT" == "tab" ]]; then
+    NEW_SURFACE=$(cmux --json tab-action --action new-terminal-right --tab "$ANCHOR_SURFACE" \
+      | python3 -c 'import json,sys; print(json.load(sys.stdin)["created_surface_ref"])')
+  else
+    ANCHOR_KEY="${SPLIT_ANCHOR[$i]}"
+    if [[ "$ANCHOR_KEY" == "main" ]]; then
+      SPLIT_TARGET="$ANCHOR_SURFACE"
+    else
+      SPLIT_TARGET="${CREATED_SURFACES[$ANCHOR_KEY]}"
+    fi
+    DIR="${SPLIT_DIR[$i]}"
+    NEW_SURFACE=$(cmux --json new-split "$DIR" --surface "$SPLIT_TARGET" \
+      | python3 -c 'import json,sys; print(json.load(sys.stdin)["surface_ref"])')
+  fi
+  CREATED_SURFACES+=("$NEW_SURFACE")
 
   # let the new shell come up
   sleep 0.4
 
-  # 5. cd + claude (with optional prompt)
+  # 5. cd + (optional) install + dev + claude
   CD_CMD="cd $(printf '%q' "$WTREE_ABS")"
+  DEV_BLOCK=$(build_dev_block "$WTREE_REL" "$PORT")
   if [[ -n "$PROMPT" ]]; then
     CLAUDE_CMD="claude $(printf '%q' "$PROMPT")"
   else
     CLAUDE_CMD="claude"
   fi
-  cmux send --surface "$NEW_SURFACE" "$CD_CMD && $CLAUDE_CMD"$'\n'
+  cmux send --surface "$NEW_SURFACE" "$CD_CMD$DEV_BLOCK && $CLAUDE_CMD"$'\n'
 
-  # 6. rename tab
-  cmux rename-tab --surface "$NEW_SURFACE" "$BRANCH :$PORT" >/dev/null
+  # 6. rename tab/pane (best-effort; some layouts may not support rename via --surface)
+  cmux rename-tab --surface "$NEW_SURFACE" "$BRANCH :$PORT" >/dev/null 2>&1 || true
 
   echo "        → surface $NEW_SURFACE"
 done

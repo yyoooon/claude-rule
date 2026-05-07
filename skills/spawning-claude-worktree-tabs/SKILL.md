@@ -7,9 +7,9 @@ description: Use when the user wants to (a) spawn N parallel Claude instances in
 
 ## Overview
 
-Spawn N cmux tabs, each in its own git worktree branched from the current branch, with copied local config (`.env*`, `.mcp*`, `.claude/settings.local.json`) and a unique dev-server `PORT` (3001, 3002, 3003 …). Each new tab `cd`s into its worktree and launches Claude.
+Spawn N cmux tabs, each in its own git worktree branched from the current branch, with copied local config (`.env*`, `.mcp*`, `.claude/settings.local.json`) and a unique dev-server `PORT` (3001, 3002, 3003 …). Each new tab `cd`s into its worktree, runs `<pm> install` + `<pm> dev` in the background (logs to `dev.log`), and launches Claude in the foreground.
 
-**Core principle:** One bash invocation → N fully wired-up tabs. The user shouldn't have to copy env files, set ports, or `cd` into worktrees by hand.
+**Core principle:** One bash invocation → N fully wired-up tabs with running dev servers. The user shouldn't have to copy env files, set ports, install deps, or `cd` into worktrees by hand.
 
 ## When to Use
 
@@ -53,9 +53,15 @@ bash ~/.claude/skills/spawning-claude-worktree-tabs/spawn.sh \
 ```
 
 Flags:
-- `-n N` — number of tabs (required)
+- `-n N` — number of tabs/panes (required)
 - `-s a,b,c` — suffix list (optional)
 - `-p file` — file with one initial prompt per line (optional)
+- `--layout MODE` — surface placement (default `tab`):
+  - `tab` — new cmux tab anchored to the current one (current behavior)
+  - `split-right` — split right of the previous spawn (progressive narrowing)
+  - `split-down` — split down of the previous spawn
+  - `grid` — 2x2 grid (N=3 only): main TL, P1 BL, P2 TR, P3 BR
+- `--no-dev` — skip auto install + dev server (just `cd && claude`)
 - `--dry-run` — print the plan without creating anything
 
 What the script does:
@@ -65,9 +71,15 @@ What the script does:
 3. For each tab `i` (1..N):
    - Creates worktree `.worktrees/<suffix>` on branch `wt/<current>/<suffix>`.
    - Copies allowlisted gitignored config: `.env`, `.env.*`, `.mcp.json`, `.mcp/`, `.claude/settings.local.json`.
-   - Sets/overrides `PORT=300<i>` in the worktree's `.env.local`.
+   - Sets/overrides `PORT=300<i>` in the worktree's `.env.local` (for apps that read PORT from dotenv; the dev server itself receives PORT as a shell env var — see step 5).
    - Spawns a new cmux tab anchored to the current tab.
-   - Sends `cd <worktree-abs-path> && claude [<prompt>]` to the new tab.
+   - **Auto dev** (default ON, skipped if `--no-dev` or no `package.json` "dev" script): detects the package manager from the lockfile (`pnpm` / `yarn` / `bun` / `npm`) and sends a single chained command to the new tab:
+     ```
+     cd <wt> && <pm> install \
+       && (PORT=<port> nohup <pm> dev > dev.log 2>&1 < /dev/null & echo $!) > dev.pid \
+       && claude [<prompt>]
+     ```
+     `dev.log` captures the dev server's stdout/stderr; `dev.pid` records its PID so `finish.sh` can stop it. If install fails, claude won't start — the user sees the error in the tab.
    - Renames the tab to `<branch> :<port>` (e.g., `wt/feat/A-page/x :3001`).
 4. **Reports** the tab → branch → path → port mapping and prints `git worktree list`.
 
@@ -76,10 +88,9 @@ What the script does:
 After running:
 
 - `git worktree list` should show the N new entries.
-- The new cmux tabs should be visible at the top of the workspace, each focused on its own shell with `claude` running.
+- The new cmux tabs should be visible at the top of the workspace, each running `<pm> install` then `claude` once install finishes (a few seconds to a minute).
 - Tell the user the port mapping (e.g., `login → 3001`) so they know which dev server hits which port.
-
-Don't auto-start dev servers — that's the user's call.
+- If dev servers don't come up, point the user to `.worktrees/<suffix>/dev.log` for the dev server output.
 
 ## Finishing (merge + cleanup)
 
@@ -98,12 +109,13 @@ Flags:
 
 Per worktree, the script:
 
-1. Verifies the worktree's working tree is clean (otherwise skips that one).
-2. **Rebases** `wt/<source>/<suffix>` onto `<source>` — gives a linear history.
-3. **Fast-forward merges** the rebased branch into `<source>` — no merge commit.
-4. Removes the worktree directory.
-5. Deletes the branch (`-d` if merged, `-D` if `--no-merge`).
-6. Closes the cmux tab whose title starts with `<branch> `.
+1. **Stops the dev server** if `dev.pid` exists (kills children via `pkill -P` then the parent), and removes `dev.log` / `dev.pid`. This must come before the clean-tree check, since those files are untracked-but-not-ignored.
+2. Verifies the worktree's working tree is clean (otherwise skips that one).
+3. **Rebases** `wt/<source>/<suffix>` onto `<source>` — gives a linear history.
+4. **Fast-forward merges** the rebased branch into `<source>` — no merge commit.
+5. Removes the worktree directory.
+6. Deletes the branch (`-d` if merged, `-D` if `--no-merge`).
+7. Closes the cmux tab whose title starts with `<branch> `.
 
 Skip-don't-fail policy: any single worktree that can't be finished (uncommitted changes, rebase conflict, ff-merge fails) is reported and skipped — the script keeps going on the others. The summary at the end shows finished vs skipped lists.
 
@@ -117,7 +129,9 @@ Skip-don't-fail policy: any single worktree that can't be finished (uncommitted 
 - **Suffix collision** (`.worktrees/login` already exists) — script errors and skips that suffix; pick a different one.
 - **Detached HEAD** — script refuses; the source branch needs a name.
 - **`PORT` already set in `.env.local`** — script overrides it; if the user wanted a custom value they must edit after.
+- **Expecting `.env.local`'s `PORT` to set the Next.js dev port** — Next.js reads `PORT` from the shell env, not from `.env.local`. spawn.sh handles this by exporting `PORT=<port>` inline before `<pm> dev`, so the dev server actually binds to the right port.
 - **Confusing "메인 브랜치" with `main`** — the source branch is the **current** branch where the main Claude is running, not git's `main`.
+- **Dev server still running after a tab is closed manually** — closing the cmux tab doesn't kill the backgrounded dev process (it was detached via `nohup`). Use `finish.sh` (it kills via `dev.pid`), or `kill $(cat .worktrees/<s>/dev.pid)` manually.
 
 ## Red Flags
 
