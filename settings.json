@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "defaultMode": "dontAsk"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "prompt=$(jq -r '.prompt'); if echo \"$prompt\" | grep -q '안드로이드 연결'; then /Users/yoon/.claude/scripts/adb-connect-wifi.sh | jq -R -s '{systemMessage: .}'; fi",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/yoon/.claude/scripts/sync-to-claude-rule.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/yoon/.claude/plugins/cache/jeongph-claude-telemetry/claude-telemetry/2.0.0/scripts/run.sh"
+  },
+  "enabledPlugins": {
+    "figma@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "claude-telemetry@jeongph-claude-telemetry": true
+  },
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "jeongph-claude-telemetry": {
+      "source": {
+        "source": "github",
+        "repo": "jeongph/claude-telemetry"
+      }
+    }
+  },
+  "skipDangerousModePermissionPrompt": true
+}
