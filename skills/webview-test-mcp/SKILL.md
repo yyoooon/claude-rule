@@ -1,7 +1,6 @@
 ---
 name: webview-test-mcp
 description: Use when working with webview-test MCP on Android — message says "앱 연결"/"웹뷰 연결", MULTIPLE_WEBVIEWS error appears, ADB device disconnected, or SPA route change (Next.js) is not re-rendering after webview_flow goto.
-disable-model-invocation: true
 ---
 
 # Webview-test MCP (개인 환경)
