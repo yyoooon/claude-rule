@@ -109,6 +109,7 @@ browser_evaluate({
 | 자동으로 ADB/웹뷰 전환 | 웹 작업만 지시받았는데 웹뷰로 점프 | 트리거 단어 없으면 Playwright만 |
 | 타입체크 = 검증으로 착각 | "lint/타입 통과했으니 OK" | 타입체크는 코드 정합성, **행동 정합성은 Playwright로만** |
 | dev 서버 죽은 채로 보고 | navigate 실패했는데 코드 수정만 반복 | navigate 실패 시 dev 서버 상태부터 확인 (Step 0) |
+| 변경 영역 스크롤 안 함 | DOM 쿼리만으로 검증, 화면은 그대로 | 사용자가 같은 브라우저 본다는 가정. `scrollIntoView`로 띄운 뒤 클릭/단언 (사용자 가시성 섹션) |
 
 ## Red Flags — STOP and verify
 
