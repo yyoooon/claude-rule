@@ -44,19 +44,46 @@ UI/기능 변경 후 **코드 읽기나 computed style 수치만으로 보고하
 
 1. `mcp__playwright__browser_resize` (모바일 프로젝트면 360×800)
 2. `browser_navigate` — [Step 0]에서 찾은 라우트로 이동 (필요 시 sessionStorage/localStorage 세팅). **이동 후 네트워크 유휴 상태(networkidle)나 핵심 DOM 요소가 렌더링될 때까지 대기할 것.**
-3. `browser_take_screenshot` — 1장, 화면 깨짐 sanity check
-4. **미세 수치 의심 시**: `browser_evaluate`로 `getComputedStyle` / `getBoundingClientRect` 일괄 추출 → Figma spec(또는 의도한 값)과 diff
-5. 차이 발견 → 코드 수정 → 재측정. diff 0 될 때까지 2~3회 자동 반복 (사용자 안 깨움)
+3. **변경 영역 스크롤** (`scrollIntoView`) — 검증 대상이 폴드 아래라면 먼저 화면 위로. 사용자 가시성 섹션 참조.
+4. `browser_take_screenshot` — 1장, 화면 깨짐 sanity check
+5. **미세 수치 의심 시**: `browser_evaluate`로 `getComputedStyle` / `getBoundingClientRect` 일괄 추출 → Figma spec(또는 의도한 값)과 diff
+6. 차이 발견 → 코드 수정 → 재측정. diff 0 될 때까지 2~3회 자동 반복 (사용자 안 깨움)
 
 ## Workflow — 동작 검증
 
 1. `browser_navigate` — [Step 0]에서 획득한 포트 및 인증 정보 활용. **렌더링 완료 대기 필수.** (모바일이면 `browser_resize` 360×800)
-2. `browser_click` / `browser_type` / `browser_fill_form` — 핵심 동작 시뮬
-3. `browser_evaluate` — 결과 단언 (URL 변경, DOM 요소 존재/부재, storage 변화)
-4. `browser_console_messages` — 에러 0건 확인
-5. `browser_network_requests` — 기대 API 호출 확인 (필요 시)
+2. **변경 영역 스크롤** (`scrollIntoView`) — 클릭 대상이 폴드 아래라면 먼저 화면 위로. 사용자 가시성 섹션 참조.
+3. `browser_click` / `browser_type` / `browser_fill_form` — 핵심 동작 시뮬
+4. `browser_evaluate` — 결과 단언 (URL 변경, DOM 요소 존재/부재, storage 변화)
+5. `browser_console_messages` — 에러 0건 확인
+6. `browser_network_requests` — 기대 API 호출 확인 (필요 시)
 
 **깊이:** 해피 패스 1번 + 명백한 엣지(에러/빈 상태) 1~2개. 그 이상은 e2e 스펙 영역.
+
+## 사용자 가시성 (Visibility for the User)
+
+사용자가 **같은 dev 브라우저를 옆에서 보고 있다**는 가정으로 검증할 것. 코드는 동작해도 화면이 그대로면 사용자에겐 "검증 안 한 것"으로 보임.
+
+**규칙:** `browser_navigate` / `browser_click` 직전에 검증 대상 요소를 화면에 띄울 것.
+
+```js
+// 클릭/검증 직전, 대상 요소가 폴드 아래일 가능성 있으면 무조건
+browser_evaluate({
+  function: `() => {
+    const el = document.querySelector('[data-testid=...]') 
+      ?? [...document.querySelectorAll('span')].find(s => s.textContent === 'Logged');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }`
+})
+// 약간의 wait로 사용자가 시각적으로 따라잡을 시간 확보 (300~500ms)
+```
+
+**언제 무조건 스크롤하나:**
+- 카드/섹션이 페이지 중간~하단에 위치
+- 클릭 후 새로 노출되는 요소가 폴드 밖일 때 (확장 카드, 더보기, 무한스크롤)
+- 단순 DOM 쿼리로 끝내는 경우에도 — 사용자 시야에 변화가 있어야 검증으로 인식됨
+
+**예외:** 첫 화면 위쪽 헤더/CTA 등 폴드 안 명백한 요소.
 
 ## Quick Reference
 
