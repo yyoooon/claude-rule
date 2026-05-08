@@ -132,6 +132,8 @@ Skip-don't-fail policy: any single worktree that can't be finished (uncommitted 
 - **Expecting `.env.local`'s `PORT` to set the Next.js dev port** — Next.js reads `PORT` from the shell env, not from `.env.local`. spawn.sh handles this by exporting `PORT=<port>` inline before `<pm> dev`, so the dev server actually binds to the right port.
 - **Confusing "메인 브랜치" with `main`** — the source branch is the **current** branch where the main Claude is running, not git's `main`.
 - **Dev server still running after a tab is closed manually** — closing the cmux tab doesn't kill the backgrounded dev process (it was detached via `nohup`). Use `finish.sh` (it kills via `dev.pid`), or `kill $(cat .worktrees/<s>/dev.pid)` manually.
+- **Target port already bound when re-running spawn.sh** — a previous spawn's `nohup` dev server can outlive its tab. spawn.sh now preflight-checks ports 3001..3000+N: if the holder's process tree is rooted at one of `.worktrees/*/dev.pid` it's killed automatically; if it's a foreign process the script aborts with PID/command and lets you decide. Don't manually `<pm> dev` into a colliding port — the new dev silently fails (EADDRINUSE) while the stale dev keeps serving outdated code.
+- **Claude died inside a tab but the worktree is still set up** — don't re-run spawn.sh (it skips existing worktrees) and don't manually `<pm> dev && claude` (port collision footgun above). Run `bash ~/.claude/skills/spawning-claude-worktree-tabs/relaunch.sh -s a,b,c` (or `--all`). It stops the old dev, restarts it with the same `PORT` from `.env.local`, finds the cmux tab by title (creates one if missing), and re-launches claude.
 
 ## Red Flags
 
