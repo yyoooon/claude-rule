@@ -226,6 +226,62 @@ if [[ $DRY_RUN -eq 1 ]]; then
   exit 0
 fi
 
+# --- preflight: target port collisions ---
+# If a target port is already bound, distinguish "our own stale dev server"
+# (process tree rooted at one of .worktrees/*/dev.pid) from a foreign holder.
+# Kill ours, abort on foreign — this prevents the silent EADDRINUSE failure
+# where the new dev fails but a stale older dev keeps serving on the same port.
+
+find_owning_pidfile() {
+  # Echo the dev.pid path whose recorded PID is an ancestor (≤4 levels up)
+  # of the listening PID. Returns 1 if no match.
+  local listening_pid="$1"
+  shopt -s nullglob
+  for pidfile in .worktrees/*/dev.pid; do
+    local our_pid
+    our_pid=$(cat "$pidfile" 2>/dev/null)
+    [[ -n "$our_pid" ]] || continue
+    local p="$listening_pid"
+    for _ in 0 1 2 3; do
+      if [[ "$p" == "$our_pid" ]]; then
+        echo "$pidfile"
+        shopt -u nullglob
+        return 0
+      fi
+      p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+      [[ -z "$p" || "$p" -le 1 ]] && break
+    done
+  done
+  shopt -u nullglob
+  return 1
+}
+
+declare -a FOREIGN_CONFLICTS=()
+for ((i=0; i<N; i++)); do
+  PORT=$((3001 + i))
+  HOLDER_PID=$(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t 2>/dev/null | head -1)
+  [[ -z "$HOLDER_PID" ]] && continue
+
+  if OWNED_PIDFILE=$(find_owning_pidfile "$HOLDER_PID"); then
+    OUR_PID=$(cat "$OWNED_PIDFILE")
+    echo "[preflight] port $PORT held by our own stale dev server ($OWNED_PIDFILE, PID $OUR_PID) — killing"
+    pkill -P "$OUR_PID" 2>/dev/null || true
+    kill "$OUR_PID" 2>/dev/null || true
+    rm -f "$OWNED_PIDFILE"
+    sleep 0.3
+  else
+    HOLDER_CMD=$(ps -p "$HOLDER_PID" -o command= 2>/dev/null | head -c 80)
+    FOREIGN_CONFLICTS+=("port $PORT held by PID $HOLDER_PID: $HOLDER_CMD")
+  fi
+done
+
+if [[ ${#FOREIGN_CONFLICTS[@]} -gt 0 ]]; then
+  echo "ERROR: target ports already bound by foreign processes:" >&2
+  for c in "${FOREIGN_CONFLICTS[@]}"; do echo "  $c" >&2; done
+  echo "Free those ports (e.g., 'kill <PID>') and re-run spawn.sh." >&2
+  exit 1
+fi
+
 # --- auto-add .worktrees/ to .gitignore if needed (one-time per project) ---
 if [[ $NEEDS_IGNORE -eq 1 ]]; then
   if [[ -n "$(git diff --cached --name-only)" ]]; then
