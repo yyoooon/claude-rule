@@ -40,7 +40,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/yoon/.claude/plugins/cache/jeongph-claude-telemetry/claude-telemetry/2.0.0/scripts/run.sh"
+    "command": "bash $HOME/.claude/plugins/cache/jeongph-claude-telemetry/claude-telemetry/2.0.0/scripts/run.sh"
   },
   "enabledPlugins": {
     "figma@claude-plugins-official": true,
