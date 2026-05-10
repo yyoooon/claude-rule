@@ -35,7 +35,7 @@ echo "base = $BASE_REMOTE/main"
 
 - **Pull은 항상 rebase.** `git pull --rebase` 만 사용. merge 방식 pull(`git pull` 기본/`--no-rebase`)은 절대 금지. 로컬 커밋이 base 위에 일직선으로 쌓이도록.
 - **머지는 항상 squash.** 일반 merge / merge --no-ff / rebase merge 금지. 자세한 명령은 아래 "머지해줘" 트리거 참조.
-- **커밋 전 lint+format.** 사용자가 commit을 명시 요청한 경우, 변경 파일에 ESLint → Prettier 순서로 적용. 자세한 명령은 아래 "lint 정리해줘" 트리거 참조.
+- **lint+format은 자동.** Claude가 Edit/Write할 때마다 PostToolUse 훅(`~/.claude/settings.json`)이 해당 파일에 ESLint→Prettier를 자동 적용. 별도 호출 불필요. 사용자가 명시적으로 "lint 정리해줘"라고 하거나, Claude 외부에서 변경된 파일이 섞인 경우만 아래 트리거 사용.
 
 ## 트리거 → 동작
 
@@ -122,9 +122,9 @@ git merge --squash "$FEATURE"
 - squash 후 commit은 자동 실행 금지 (CLAUDE.md "자동 커밋 금지" 규칙). 메시지 후보 + `git status` 보고 후 사용자가 확정
 - feature 브랜치 삭제는 사용자 명시 요청 시만
 
-### "lint 정리해줘" / "포맷 맞춰줘" / 커밋 전 자동 실행
+### "lint 정리해줘" / "포맷 맞춰줘" (수동 배치)
 
-커밋 직전(사용자가 commit을 명시 요청했을 때) 변경 파일에 대해 순서대로:
+> Claude의 Edit/Write는 PostToolUse 훅이 자동 처리하므로 보통 불필요. 사용자 명시 요청 또는 Claude 외부에서 변경된 파일까지 같이 정리해야 할 때만 사용.
 
 ```bash
 CHANGED=$(git diff --name-only --diff-filter=ACMR HEAD)   # 스테이징 + 워킹 변경
