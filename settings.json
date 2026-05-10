@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "prompt=$(jq -r '.prompt'); if echo \"$prompt\" | grep -q '안드로이드 연결'; then /Users/yoon/.claude/scripts/adb-connect-wifi.sh | jq -R -s '{systemMessage: .}'; fi",
+            "command": "prompt=$(jq -r '.prompt'); if echo \"$prompt\" | grep -q '안드로이드 연결'; then $HOME/.claude/hooks/user-prompt-submit/adb-connect-wifi.sh | jq -R -s '{systemMessage: .}'; fi",
             "timeout": 30
           }
         ]
@@ -20,8 +20,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/yoon/.claude/scripts/sync-to-claude-rule.sh",
+            "command": "$HOME/.claude/hooks/post-tool-use/sync-to-claude-rule.sh",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/post-tool-use/post-edit-format.sh",
+            "timeout": 30,
+            "statusMessage": "Linting & formatting…"
           }
         ]
       }
