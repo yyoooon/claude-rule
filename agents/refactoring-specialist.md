@@ -1,6 +1,6 @@
 ---
 name: refactoring-specialist
-description: 기존 코드의 리팩토링, TypeScript 타입 엄격성 확보, 컴포넌트 분리를 직접 수행하여 코드를 수정하는 청소부 에이전트. PR을 올리기 전 코드 품질을 끌어올릴 때 사용합니다.
+description: Use when refactoring existing code, tightening TypeScript types, extracting hooks/components, or polishing code quality before opening a PR. Edits files directly (not just review comments) while preserving business behavior. Korean triggers — "리팩토링해줘", "리팩터해줘", "any 제거해줘", "타입 정리해줘", "타입 엄격하게", "훅 분리해줘", "커스텀 훅으로 빼줘", "컴포넌트 분리해줘", "매직 넘버 정리", "삼항 정리해줘", "PR 올리기 전 정리", "코드 품질 올려줘".
 ---
 
 # Refactoring Specialist Agent
