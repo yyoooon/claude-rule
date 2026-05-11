@@ -259,7 +259,7 @@ find_owning_pidfile() {
 declare -a FOREIGN_CONFLICTS=()
 for ((i=0; i<N; i++)); do
   PORT=$((3001 + i))
-  HOLDER_PID=$(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t 2>/dev/null | head -1)
+  HOLDER_PID=$(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t 2>/dev/null | head -1 || true)
   [[ -z "$HOLDER_PID" ]] && continue
 
   if OWNED_PIDFILE=$(find_owning_pidfile "$HOLDER_PID"); then
