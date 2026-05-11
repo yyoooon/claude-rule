@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # PostToolUse hook: auto-format files Claude edits.
-# Reads tool input JSON from stdin, runs ESLint --fix then Prettier --write.
-# Silently skips when tools aren't installed locally. Always exits 0.
+# Runs ESLint --fix then Prettier --write. On real failures (tool installed
+# but exited non-zero), surfaces output via {"systemMessage": ...} so Claude
+# sees it in the next turn. Silently skips when tools aren't installed locally.
+# Always exits 0.
 
 set -u
 
@@ -15,9 +17,38 @@ esac
 
 cd "$(dirname "$f")" 2>/dev/null || exit 0
 
-# --no-install: don't fetch from registry; if not in local node_modules, fail fast.
-# Stderr/stdout silenced so lint warnings don't leak into Claude's transcript.
-npx --no-install eslint --fix "$f" >/dev/null 2>&1
-npx --no-install prettier --write "$f" >/dev/null 2>&1
+# Heuristic: distinguish "tool not installed locally" from "real failure".
+# npx --no-install prints these when the binary isn't found in node_modules.
+is_missing_tool() {
+  echo "$1" | grep -qE "could not determine executable|npx canceled|command not found"
+}
 
+tmp=$(mktemp)
+
+# ESLint --fix
+eslint_out=$(npx --no-install eslint --fix "$f" 2>&1)
+eslint_rc=$?
+if [ "$eslint_rc" -ne 0 ] && ! is_missing_tool "$eslint_out"; then
+  {
+    echo "[post-edit-format] ESLint reported issues in $f (exit $eslint_rc):"
+    echo "$eslint_out"
+    echo ""
+  } >> "$tmp"
+fi
+
+# Prettier --write
+prettier_out=$(npx --no-install prettier --write "$f" 2>&1)
+prettier_rc=$?
+if [ "$prettier_rc" -ne 0 ] && ! is_missing_tool "$prettier_out"; then
+  {
+    echo "[post-edit-format] Prettier failed for $f (exit $prettier_rc):"
+    echo "$prettier_out"
+  } >> "$tmp"
+fi
+
+if [ -s "$tmp" ]; then
+  jq -R -s '{systemMessage: .}' < "$tmp"
+fi
+
+rm -f "$tmp"
 exit 0

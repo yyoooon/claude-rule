@@ -1,6 +1,6 @@
 ---
 name: applying-figma-designs
-description: Use when converting Figma designs into code. Emphasizes token efficiency by completely avoiding whole-page JSON parsing. Combines Vision (screenshots) for layout and targeted Figma MCP (node-id only) for specific components. Includes Co-generation (Component + Story) for future-proofing and CDD.
+description: Use when converting Figma designs into code. Emphasizes token efficiency by completely avoiding whole-page JSON parsing. Combines Vision (screenshots) for layout and targeted Figma MCP (node-id only) for specific components. Co-generates a Storybook file alongside the component only when Storybook is already installed in the project.
 ---
 
 # Applying Figma Designs (Token Diet Protocol)
@@ -16,8 +16,8 @@ description: Use when converting Figma designs into code. Emphasizes token effic
 ### Step 1 — 작은 블록 생성 (Bottom-Up Component Extraction)
 1. 사용자가 전달한 특정 컴포넌트의 `node-id` 링크만 Figma MCP로 호출한다. (전체 페이지 호출 절대 금지)
 2. `vector`, `booleanOperation` 등 무거운 SVG/아이콘 데이터는 무시하고 lucide-react 등으로 임의 대체한다.
-3. **Co-generation (동시 생성) 필수**: 컴포넌트 파일(`[Name].tsx`)과 스토리북 파일(`[Name].stories.tsx`)을 반드시 한 번에 같이 생성한다. (프로젝트에 당장 Storybook이 설치되어 있지 않더라도, CDD 아키텍처와 미래 확장을 위해 파일은 무조건 생성한다.)
-4. 생성된 스토리 파일에는 사용자가 전달한 Figma 링크를 `parameters.design.url`에 임베딩하여 추후 `@storybook/addon-designs`가 작동할 수 있도록 세팅한다.
+3. **Co-generation (동시 생성)** — 프로젝트에 Storybook이 설치된 경우에만, 컴포넌트 파일(`[Name].tsx`)과 함께 스토리북 파일(`[Name].stories.tsx`)을 같이 생성한다. 설치 여부 판단: `package.json` 의존성에 `@storybook/*` 또는 `storybook`이 있거나 `.storybook/` 디렉토리가 존재할 때. 설치되어 있지 않다면 `.stories.tsx`는 생성하지 않는다 (불필요한 파일 추가 금지).
+4. 스토리 파일을 생성하는 경우, 사용자가 전달한 Figma 링크를 `parameters.design.url`에 임베딩하여 `@storybook/addon-designs`가 작동할 수 있도록 세팅한다.
 
 ### Step 2 — 큰 뼈대 잡기 (Top-Down Layout Assembly)
 화면 전체 레이아웃을 구성할 때는 다음 규칙을 따른다:
@@ -35,4 +35,4 @@ description: Use when converting Figma designs into code. Emphasizes token effic
 |---|---|
 | 전체 페이지 링크 호출 | 토큰 폭발의 주범. 반드시 특정 `node-id` 단위로만 MCP 호출할 것 |
 | AI 기반 Visual Diff 시도 | Playwright로 캡처/Computed Style을 대조하여 디자인 일치 여부를 판별하지 말 것 |
-| Co-generation 누락 | 당장 Storybook이 없더라도 컴포넌트와 Story 파일은 항상 세트로 생성할 것 |
+| Storybook 미설치 프로젝트에 `.stories.tsx` 생성 | Storybook이 설치된 프로젝트에서만 Story 파일을 함께 생성할 것 (불필요한 파일 금지) |

@@ -86,4 +86,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Cross-page 재사용은 승격 후.** 다른 페이지 전용 컴포넌트를 그대로 import하지 말 것. 공통화 가치 검토 → 사용자 동의 → 공통 위치로 옮긴 다음 사용. 자동 cross-page import는 의도치 않은 결합 생성.
 - **Rule of Three.** 같은 패턴 3번째 등장하면 추상화. 2번까지는 두 개 두는 게 잘못된 추상화보다 쌈.
 
+### 10. UI 스택 & 컨벤션 (React + Tailwind 프로젝트 한정)
+
+해당 스택을 쓰는 프로젝트에서만 적용. 다른 스택이면 무시.
+
+- **Framework:** Next.js App Router / React / TypeScript.
+- **Styling:** Tailwind CSS. 여백·간격은 기본 4px 배수(`p-4`, `gap-6`). 디자인이 명시적으로 다른 그리드(8px·10px 단위 등)를 요구하면 그쪽이 우선.
+- **UI Library:** `shadcn/ui` + `Radix UI` 베이스. Dialog/Select/DatePicker 등 a11y가 까다로운 요소는 직접 구현하지 말고 shadcn에서 가져와서 스타일만 입힐 것 (바퀴 재발명 금지).
+- **Icons:** `lucide-react`. Figma의 SVG/Vector 데이터는 무시하고 라이브러리 아이콘으로 대체.
+- **CDD (Component-Driven Development):** 페이지 한 번에 짜지 말고 작은 요소부터 Bottom-Up으로 조립. 같은 페이지 내 이미 만들어진 복합 컴포넌트(`<UserCard>`, `<ProductList>` 등) 먼저 탐색 후 조립.
+
+**Why:** 매번 같은 컨벤션을 재설명하지 않으려고 한 곳에 박음. 4px 배수/shadcn 베이스는 디자인-코드 간 마찰을 줄이는 안전한 디폴트지 절대 규칙이 아님 — 디자인이 명시적으로 다르게 요구하면 그쪽이 우선.
+
 
