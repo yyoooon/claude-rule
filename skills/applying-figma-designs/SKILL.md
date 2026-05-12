@@ -40,6 +40,40 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 "작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요. (또는 Storybook 환경이 구축되어 있다면 `npm run storybook`으로 Figma Addon과 비교해 주세요.)"
 *(주의: Playwright를 사용하여 CSS 수치나 픽셀을 대조하는 Visual Diffing 시도 절대 금지)*
 
+## Example Flow (Reference)
+
+전형적인 1회 발화 흐름:
+
+```
+User: 이 컴포넌트 만들어줘 https://figma.com/design/abc.../?node-id=42-15
+
+Model:
+"node-id `42-15`만 핀포인트 추출해서 작업하겠습니다."
+
+[Step 0: URL에 node-id 포함됨 → 통과]
+[Step 1.1: Read package.json → @storybook 의존성 없음 → stories.tsx 생성 스킵]
+[Step 1.2: Figma MCP get_design_context with nodeId='42:15' (전체 페이지 호출 X)]
+[Step 1.3: vector 데이터 → lucide-react 아이콘으로 대체]
+[Step 1.4: components/FooCard.tsx 생성 (Storybook 없음 → .stories.tsx 미생성)]
+
+Model:
+"FooCard 컴포넌트를 만들었습니다. 화면 전체 배치를 위해
+스크린샷을 첨부해주시거나, 컨테이너 padding/gap 수치를 알려주세요."
+
+[사용자 스크린샷 도착]
+[Step 2: Vision으로 구조 파악 → 기존 공통 컴포넌트 재사용해서 조립]
+
+Model:
+"작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해
+브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
+[Step 3: 종료. Playwright visual diff 시도 금지]
+```
+
+핵심 행동 신호:
+- Figma MCP는 **단 1회**, **단일 node-id**로만 호출
+- 레이아웃 수치가 없으면 **즉시 사용자에게 요청** (추측 금지)
+- 마지막에 **사용자(인간) 검증으로 위임**하고 종료 (AI 자체 검증 금지)
+
 ## Common Mistakes — 절대 피할 것
 | 실수 | 방지 |
 |---|---|
