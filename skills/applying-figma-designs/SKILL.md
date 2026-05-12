@@ -36,8 +36,8 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 3. 간격(gap), 여백(padding) 등 거시적 수치는 AI가 임의로 추측하지 말고, 사용자가 텍스트로 전달한 명시적 수치(예: 좌우 패딩 `px-8`, 간격 `gap-6`)를 정확히 따른다.
 
 ### Step 3 — 시각적 검증 위임 (Verification Hand-off)
-코드가 작성되면 시각적 검증을 위해 아래와 같이 사용자에게 안내하고 종료한다. 
-"작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요. (또는 Storybook 환경이 구축되어 있다면 `npm run storybook`으로 Figma Addon과 비교해 주세요.)"
+코드가 작성되면 시각적 검증을 위해 아래와 같이 사용자에게 안내하고 종료한다.
+"작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
 *(주의: Playwright를 사용하여 CSS 수치나 픽셀을 대조하는 Visual Diffing 시도 절대 금지)*
 
 ## Example Flow (Reference)
