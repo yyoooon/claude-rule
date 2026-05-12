@@ -1,6 +1,6 @@
 ---
 name: applying-figma-designs
-description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol (token-diet). Korean triggers — "피그마 적용해줘", "이 시안 적용해줘", "디자인 적용해줘", "이 화면 만들어줘", "이 컴포넌트 만들어줘", "node-id 가져와서 만들어줘", "이 노드 추출해줘", "디자인 반영해줘", "시안대로 만들어줘", "Figma 코드로 변환해줘" — 특히 Figma URL(figma.com/design/...)/node-id/스크린샷이 함께 첨부됐을 때. 핵심: 전체 페이지 Figma MCP 호출 금지 → 스크린샷(Vision)으로 레이아웃 잡고 단일 node-id만 Figma MCP로 추출, 시각적 검증은 사용자(PerfectPixel 등)에 위임. Storybook 동시 생성은 글로벌 기본값 OFF — Storybook 쓰는 프로젝트는 프로젝트 CLAUDE.md에 "Figma 작업 시 .stories.tsx 동시 생성" 한 줄로 옵트인. Skip — Figma로 write back은 figma:figma-generate-design, 다이어그램은 figma:figma-generate-diagram, Code Connect 매핑은 figma:figma-code-connect, 라이브러리/디자인 시스템 빌드는 figma:figma-generate-library 사용.
+description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol (token-diet). Korean triggers — "피그마 적용해줘", "이 시안 적용해줘", "디자인 적용해줘", "이 화면 만들어줘", "이 컴포넌트 만들어줘", "node-id 가져와서 만들어줘", "이 노드 추출해줘", "디자인 반영해줘", "시안대로 만들어줘", "Figma 코드로 변환해줘" — 특히 Figma URL(figma.com/design/...)/node-id/스크린샷이 함께 첨부됐을 때. 핵심: 전체 페이지 Figma MCP 호출 금지 → 스크린샷(Vision)으로 레이아웃 잡고 단일 node-id만 Figma MCP로 추출, 시각적 검증은 사용자(PerfectPixel 등)에 위임. Storybook 동시 생성은 프로젝트 옵트인 시에만(본문 참고). Skip — Figma로 write back은 figma:figma-generate-design, 다이어그램은 figma:figma-generate-diagram, Code Connect 매핑은 figma:figma-code-connect, 라이브러리/디자인 시스템 빌드는 figma:figma-generate-library 사용.
 ---
 
 # Applying Figma Designs (Token Diet Protocol)
