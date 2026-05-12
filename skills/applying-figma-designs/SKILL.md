@@ -25,14 +25,9 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 3. node-id가 있으면 Step 1로 진행.
 
 ### Step 1 — 작은 블록 생성 (Bottom-Up Component Extraction)
-1. **Storybook 설치 여부 사전 확인 (MANDATORY).** Step 1.4 시작 전에 다음을 실행한다:
-   - `Read package.json` → `@storybook/*` 또는 `storybook` 의존성 검색
-   - 없으면 `.storybook/` 디렉토리 존재 여부 확인
-   - 둘 다 없으면 → `.stories.tsx` 생성 단계(Step 1.4) **건너뛰기**.
-2. 사용자가 전달한 특정 컴포넌트의 `node-id` 링크만 Figma MCP로 호출한다. (전체 페이지 호출 절대 금지)
-3. `vector`, `booleanOperation` 등 무거운 SVG/아이콘 데이터는 무시하고 lucide-react 등으로 임의 대체한다.
-4. **Co-generation (동시 생성)** — Step 1.1 체크 결과 Storybook이 설치된 경우에만, 컴포넌트 파일(`[Name].tsx`)과 함께 스토리북 파일(`[Name].stories.tsx`)을 같이 생성한다. 설치되어 있지 않다면 생성하지 않는다 (불필요한 파일 추가 금지).
-5. 스토리 파일을 생성하는 경우, 사용자가 전달한 Figma 링크를 `parameters.design.url`에 임베딩하여 `@storybook/addon-designs`가 작동할 수 있도록 세팅한다.
+1. 사용자가 전달한 특정 컴포넌트의 `node-id` 링크만 Figma MCP로 호출한다. (전체 페이지 호출 절대 금지)
+2. `vector`, `booleanOperation` 등 무거운 SVG/아이콘 데이터는 무시하고 lucide-react 등으로 임의 대체한다.
+3. 컴포넌트 파일(`[Name].tsx`)을 생성한다. (Storybook 동시 생성은 프로젝트 옵트인 시에만 — Overview 참고)
 
 ### Step 2 — 큰 뼈대 잡기 (Top-Down Layout Assembly)
 화면 전체 레이아웃을 구성할 때는 다음 규칙을 따른다:
