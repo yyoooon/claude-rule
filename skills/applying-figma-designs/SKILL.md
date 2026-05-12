@@ -33,16 +33,19 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 2. `vector`, `booleanOperation` 등 무거운 SVG/아이콘 데이터는 무시하고 lucide-react 등으로 임의 대체한다.
 3. 컴포넌트 파일(`[Name].tsx`)을 생성한다. (Storybook 동시 생성은 프로젝트 옵트인 시에만 — Overview 참고)
 
+**MCP 호출 실패 시 회복 (MANDATORY):** Figma MCP 호출이 권한/네트워크/timeout 등 어떤 이유로 실패하면, **전체 페이지 재호출이나 다른 node 추측 시도 절대 금지**. 즉시 중단하고 사용자에게 다음 둘 중 하나를 요청한다: (a) node-id가 올바른지 확인, (b) 해당 컴포넌트 스크린샷 첨부 (스크린샷이 오면 Step 1 건너뛰고 Step 2부터 진행).
+
 ### Step 2 — 큰 뼈대 잡기 (Top-Down Layout Assembly)
 화면 전체 레이아웃을 구성할 때는 다음 규칙을 따른다:
 1. 사용자가 첨부한 전체 화면 스크린샷(Vision)을 기반으로 구조(Flex/Grid)를 파악한다.
 2. Step 1에서 생성한(혹은 이미 존재하는) 공통 컴포넌트를 재사용하여 조립한다.
-3. 간격(gap), 여백(padding) 등 거시적 수치는 AI가 임의로 추측하지 말고, 사용자가 텍스트로 전달한 명시적 수치(예: 좌우 패딩 `px-8`, 간격 `gap-6`)를 정확히 따른다.
+3. **간격(gap)/여백(padding) 등 거시적 수치가 명시되지 않으면 추측하지 말고 사용자에게 즉시 요청한다.** AI가 임의로 px/gap 값을 채우면 작업 실패로 간주. 사용자가 텍스트로 전달한 명시 수치(예: 좌우 패딩 `px-8`, 간격 `gap-6`)만 사용한다.
 
 ### Step 3 — 시각적 검증 위임 (Verification Hand-off)
-코드가 작성되면 시각적 검증을 위해 아래와 같이 사용자에게 안내하고 종료한다.
+코드가 작성되면 다음 메시지를 출력하고 **즉시 종료한다**:
 "작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
-*(주의: Playwright를 사용하여 CSS 수치나 픽셀을 대조하는 Visual Diffing 시도 절대 금지)*
+
+**종료 후 추가 검증 도구 호출 금지** — Playwright/webview computed-style diff 등 AI 측 시각 비교 시도 일체 금지. 검증은 사용자(인간)에게 위임된 상태이며, 모델 측 후속 작업은 종료된 것으로 간주한다.
 
 ## Example Flow (Reference)
 
