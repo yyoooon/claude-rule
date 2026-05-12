@@ -1,5 +1,5 @@
 #!/bin/sh
-# Mirror ~/.claude/{CLAUDE.md,skills/,settings.json,hooks/,agents/} to ~/Desktop/claude_rule
+# Mirror ~/.claude/{CLAUDE.md,skills/,settings.json,hooks/,agents/,scripts/} to ~/Desktop/claude_rule
 # and commit+push. Invoked by PostToolUse hook (Edit|Write).
 #
 # Filter: only runs when the edited path is one of the synced targets above.
