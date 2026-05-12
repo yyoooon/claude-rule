@@ -51,10 +51,9 @@ Model:
 "node-id `42-15`만 핀포인트 추출해서 작업하겠습니다."
 
 [Step 0: URL에 node-id 포함됨 → 통과]
-[Step 1.1: Read package.json → @storybook 의존성 없음 → stories.tsx 생성 스킵]
-[Step 1.2: Figma MCP get_design_context with nodeId='42:15' (전체 페이지 호출 X)]
-[Step 1.3: vector 데이터 → lucide-react 아이콘으로 대체]
-[Step 1.4: components/FooCard.tsx 생성 (Storybook 없음 → .stories.tsx 미생성)]
+[Step 1.1: Figma MCP get_design_context with nodeId='42:15' (전체 페이지 호출 X)]
+[Step 1.2: vector 데이터 → lucide-react 아이콘으로 대체]
+[Step 1.3: components/FooCard.tsx 생성]
 
 Model:
 "FooCard 컴포넌트를 만들었습니다. 화면 전체 배치를 위해
@@ -68,6 +67,8 @@ Model:
 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
 [Step 3: 종료. Playwright visual diff 시도 금지]
 ```
+
+> **Storybook 옵트인 프로젝트:** Step 1.3에서 `.tsx` 옆에 `[Name].stories.tsx`를 같이 생성하고, `parameters.design.url`에 Figma 링크를 임베딩한다. 옵트인은 프로젝트 CLAUDE.md에 명시되어 있어야 한다 (Overview 참고).
 
 핵심 행동 신호:
 - Figma MCP는 **단 1회**, **단일 node-id**로만 호출
