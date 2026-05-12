@@ -22,9 +22,10 @@ cp "$HOME/.claude/settings.json" "$REPO/settings.json" 2>/dev/null || true
 rsync -a --delete "$HOME/.claude/skills/" "$REPO/skills/" 2>/dev/null || true
 rsync -a --delete "$HOME/.claude/hooks/" "$REPO/hooks/" 2>/dev/null || true
 rsync -a --delete "$HOME/.claude/agents/" "$REPO/agents/" 2>/dev/null || true
+rsync -a --delete "$HOME/.claude/scripts/" "$REPO/scripts/" 2>/dev/null || true
 
 cd "$REPO" || exit 0
-git add CLAUDE.md skills settings.json hooks agents >/dev/null 2>&1 || true
+git add CLAUDE.md skills settings.json hooks agents scripts >/dev/null 2>&1 || true
 git diff --cached --quiet && exit 0
 
 REL="${F#$HOME/.claude/}"
