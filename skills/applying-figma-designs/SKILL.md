@@ -57,10 +57,10 @@ User: 이 컴포넌트 만들어줘 https://figma.com/design/abc.../?node-id=42-
 Model:
 "node-id `42-15`만 핀포인트 추출해서 작업하겠습니다."
 
-[Step 0: URL에 node-id 포함됨 → 통과]
-[Step 1.1: Figma MCP get_design_context with nodeId='42:15' (전체 페이지 호출 X)]
-[Step 1.2: vector 데이터 → lucide-react 아이콘으로 대체]
-[Step 1.3: components/FooCard.tsx 생성]
+[Step 0: URL에 node-id 포함됨 → Step 1 진행]
+[Step 1-(1): Figma MCP get_design_context with nodeId='42:15' (전체 페이지 호출 X)]
+[Step 1-(2): vector 데이터 → lucide-react 아이콘으로 대체]
+[Step 1-(3): components/FooCard.tsx 생성]
 
 Model:
 "FooCard 컴포넌트를 만들었습니다. 화면 전체 배치를 위해
