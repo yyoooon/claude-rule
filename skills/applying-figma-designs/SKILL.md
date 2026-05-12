@@ -78,5 +78,8 @@ Model:
 | 실수 | 방지 |
 |---|---|
 | 전체 페이지 링크 호출 | 토큰 폭발의 주범. 반드시 특정 `node-id` 단위로만 MCP 호출할 것 |
+| node-id 없는 URL을 받고도 그냥 진행 | Step 0에서 즉시 사용자에게 node-id 되묻기 |
+| Storybook 설치 여부 확인 없이 .stories.tsx 생성 | Step 1.1에서 package.json/.storybook을 먼저 Read |
+| 레이아웃 수치를 임의로 추측 | 스크린샷 없으면 사용자에게 padding/gap 명시 수치 요청 |
 | AI 기반 Visual Diff 시도 | Playwright로 캡처/Computed Style을 대조하여 디자인 일치 여부를 판별하지 말 것 |
 | Storybook 미설치 프로젝트에 `.stories.tsx` 생성 | Storybook이 설치된 프로젝트에서만 Story 파일을 함께 생성할 것 (불필요한 파일 금지) |
