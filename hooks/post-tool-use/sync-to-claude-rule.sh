@@ -10,7 +10,7 @@ F=$(jq -r '.tool_response.filePath // .tool_input.file_path // ""' 2>/dev/null |
 [ -z "$F" ] && exit 0
 
 case "$F" in
-  "$HOME/.claude/CLAUDE.md"|"$HOME/.claude/skills/"*|"$HOME/.claude/settings.json"|"$HOME/.claude/hooks/"*|"$HOME/.claude/agents/"*) ;;
+  "$HOME/.claude/CLAUDE.md"|"$HOME/.claude/skills/"*|"$HOME/.claude/settings.json"|"$HOME/.claude/hooks/"*|"$HOME/.claude/agents/"*|"$HOME/.claude/scripts/"*) ;;
   *) exit 0 ;;
 esac
 
