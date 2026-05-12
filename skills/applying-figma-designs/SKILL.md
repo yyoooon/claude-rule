@@ -18,11 +18,15 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 
 ## The B Protocol (3 Steps)
 
-### Step 0 — 입력 검증 (URL Sanity Check, MANDATORY)
-**Step 1 진입 전에 먼저 검증한다.**
-1. 사용자가 전달한 Figma URL에 `node-id=` 쿼리 파라미터가 **있는지** 확인한다.
-2. **없으면 즉시 중단하고 사용자에게 되묻는다**: "전체 페이지 URL이네요. B Protocol은 토큰 폭발 방지를 위해 단일 node-id만 추출합니다. 어떤 컴포넌트/프레임의 node-id를 작업할까요?"
-3. node-id가 있으면 Step 1로 진행.
+### Step 0 — 입력 분기 (Input Triage, MANDATORY)
+**Step 1 진입 전에 사용자가 전달한 입력이 어떤 형태인지 분기한다.** 자료를 자의적으로 보충하지 말 것.
+
+| 입력 형태 | 다음 단계 |
+|---|---|
+| Figma URL + `node-id=` 파라미터 있음 | **Step 1로 진행** |
+| Figma URL은 있는데 `node-id=` 없음 (= 전체 페이지) | **즉시 중단하고 되묻기**: "전체 페이지 URL이네요. B Protocol은 토큰 폭발 방지를 위해 단일 node-id만 추출합니다. 어떤 컴포넌트/프레임의 node-id를 작업할까요?" |
+| URL 없이 **스크린샷만** 첨부 | **Step 1 건너뛰고 Step 2부터** (Vision 기반 조립). 단, 새 컴포넌트가 필요한 게 명확하면 사용자에게 해당 부분의 Figma node-id를 요청한 뒤 Step 1로. |
+| URL/스크린샷 모두 없음 (텍스트 설명만) | **즉시 중단하고 자료 요청**: Figma node-id 또는 화면 스크린샷 중 최소 하나 필요. |
 
 ### Step 1 — 작은 블록 생성 (Bottom-Up Component Extraction)
 1. 사용자가 전달한 특정 컴포넌트의 `node-id` 링크만 Figma MCP로 호출한다. (전체 페이지 호출 절대 금지)
