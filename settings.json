@@ -36,6 +36,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/scripts/playwright-verify-gate.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
