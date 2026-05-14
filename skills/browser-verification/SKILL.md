@@ -261,5 +261,6 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | 메인 컨텍스트 오염 | 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | 항상 서브에이전트로 dispatch. |
 | 페이지 stale | HMR 신뢰하고 reload 생략 | 검증 시작 시 항상 `eval "location.reload()"`. |
 | CLI 호출 누적 | step마다 agent-browser 따로 호출 | 멀티스텝은 eval IIFE 1콜 (agent-browser 스킬 참고). |
+| **자체 브라우저 spawn** | `--cdp` 없이 `agent-browser open ...` 호출 → 별도 Chrome 띄움 | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것 (절대 자체 spawn 금지). |
 | 자동 수정 폭주 | 한 번 실패 후 계속 수정 시도 | 최대 2회. 누적 50줄 추가 시 즉시 에스컬레이션. |
 | Sentinel 누락 | 검증 후 hash 기록 안 함 → 다음 Stop에서 또 발화 | PASS/SKIP/인프라 에러 시 반드시 sentinel 기록. |
