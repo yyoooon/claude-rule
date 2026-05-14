@@ -23,7 +23,7 @@ agent-browser CLI 공식 디폴트는 `open → snapshot -i → click @e1 → sn
 - 단일 스크린샷 / 단일 클릭 → 그냥 `agent-browser open + screenshot` 한 줄
 - 실기기 Android WebView → `webview-test` MCP
 - 회귀 테스트 자산화 → Playwright Test
-- 자동 검증 (Stop hook) → `playwright-verification` 스킬
+- 자동 검증 (Stop hook) → `browser-verification` 스킬
 
 ## 디폴트 워크플로우 (멀티스텝)
 
