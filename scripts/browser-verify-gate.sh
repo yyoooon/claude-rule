@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# playwright-verify-gate.sh
+# browser-verify-gate.sh
 # Stop hook: git diff에 검증 대상 코드 변경이 있으면 verification 사이클을 트리거.
 # 이미 검증 완료된 상태(sentinel 일치)면 스킵.
 
