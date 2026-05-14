@@ -1,6 +1,7 @@
 {
   "permissions": {
-    "defaultMode": "dontAsk"
+    "defaultMode": "dontAsk",
+    "allow": ["Bash(agent-browser:*)"]
   },
   "hooks": {
     "UserPromptSubmit": [
