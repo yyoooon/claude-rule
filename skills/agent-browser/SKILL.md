@@ -122,6 +122,128 @@ const setReactValue = (el, val) => {
 | input by type | `inputMode === "decimal"` / `type === "number"` 등 |
 | `role=dialog` 시트 안만 | scope 좁히기 — `document.querySelector("[role=dialog]")` 안에서 검색 |
 
+## 스타일/시각 검증 (Figma 4-check)
+
+agent-browser는 픽셀 단위 자동 회귀는 못 하지만, **Figma 시안과 구현 토큰이 일치하는지** 검증엔 잘 맞는다. 메모리의 `applying-figma-designs` 4-check 패턴을 eval IIFE로:
+
+```bash
+agent-browser --cdp 9223 eval '
+(() => {
+  const inspect = (sel, label) => {
+    const el = document.querySelector(sel);
+    if (!el) return { label, error: "not found" };
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return {
+      label,
+      rect: { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) },
+      color: cs.color,
+      background: cs.backgroundColor,
+      font: `${cs.fontSize}/${cs.lineHeight} ${cs.fontWeight}`,
+      padding: cs.padding,
+      gap: cs.gap,
+      opacity: cs.opacity,
+      borderRadius: cs.borderRadius,
+    };
+  };
+  return [
+    inspect("[data-slot=card]", "card"),
+    inspect("[data-slot=card] h3", "title"),
+    inspect("[data-slot=card] button", "cta"),
+  ];
+})()
+'
+```
+
+**4-check 항목** (메모리 `feedback_figma_apply_verification.md`):
+1. 컨테이너 간 **gap** — `gap` 값 비교
+2. **Figma vs 현재 시각 비교** — screenshot 1컷 떠서 같이 Read (vision)
+3. **부모-자식 opacity 분리** — `opacity` 값 비교
+4. **중첩 padding 합산** — 부모/자식 padding 더해서 실 시각적 spacing 추출
+
+screenshot은 vision 비교용 (jpeg 70%로 작게):
+
+```bash
+agent-browser --cdp 9223 screenshot impl.jpeg  # AGENT_BROWSER_SCREENSHOT_DIR 디폴트로 /tmp
+# Figma 시안 스크린샷 옆에 두고 같이 Read → 갭/정렬/대조 비교
+```
+
+⚠️ 금지: **자동 검증 스킬(browser-verification) 안에선 computedStyle 비교 금지.** 그 스킬은 동작/에러 검증 전용. 스타일 검증은 사용자 명시 요청 시에만 별도로.
+
+## 디버깅 (console / network / state)
+
+agent-browser는 네이티브 console/network 캡처 지원. 디버깅 일상에 적합.
+
+### 콘솔 에러 빠른 진단
+
+```bash
+# 클리어 → 페이지 동작 → 캡처
+agent-browser --cdp 9223 console --clear
+# (사용자가 페이지 조작 or eval로 시뮬레이션)
+agent-browser --cdp 9223 console --json | head -50
+```
+
+### 네트워크 4xx/5xx만 추출
+
+```bash
+agent-browser --cdp 9223 network requests --clear
+# 조작
+agent-browser --cdp 9223 network requests --status 4xx --json
+agent-browser --cdp 9223 network requests --status 5xx --json
+# 특정 API만
+agent-browser --cdp 9223 network requests --filter "/api/v1/users" --json
+```
+
+### API 응답 mocking (1회성)
+
+특정 API가 깨졌다 치고 UI 확인 / 빈 상태 점검:
+
+```bash
+agent-browser --cdp 9223 network route "**/api/v1/foo" --body '{"items":[]}'   # 빈 응답
+agent-browser --cdp 9223 network route "**/api/v1/bar" --abort                  # 실패
+agent-browser --cdp 9223 unroute   # 끝나면 정리
+```
+
+### React state / 컨텍스트 덤프
+
+페이지 내부 상태 추출 (devtools 안 켜고):
+
+```bash
+agent-browser --cdp 9223 eval '
+(() => {
+  // localStorage / sessionStorage / cookie
+  const storage = {
+    local: { ...localStorage },
+    session: { ...sessionStorage },
+    cookie: document.cookie,
+  };
+  // React Query cache (window에 노출돼있다면)
+  const rq = window.__REACT_QUERY_DEVTOOLS__?.queryClient?.getQueryCache().getAll()
+    .map(q => ({ key: q.queryKey, status: q.state.status, error: q.state.error?.message }));
+  return { storage, rq, url: location.pathname };
+})()
+'
+```
+
+### 디버깅 dump 표준 패턴 (한 방)
+
+문제 재현 후 한 콜로 종합 진단:
+
+```bash
+agent-browser --cdp 9223 eval '
+(() => ({
+  url: location.pathname,
+  title: document.title,
+  visibleText: document.body.innerText.slice(0, 500),
+  errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")]
+    .map(el => el.textContent?.trim().slice(0, 200)),
+  inputs: [...document.querySelectorAll("input")]
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ name: el.name, type: el.type, value: el.value, valid: el.validity.valid })),
+}))()
+' && agent-browser --cdp 9223 console --json | head -30
+```
+
 ## 속도 최적화 (정확성 손상 X)
 
 ### a. 스냅샷 스코프로 토큰/시간 둘 다 절감
