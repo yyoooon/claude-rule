@@ -3,6 +3,11 @@
     "defaultMode": "dontAsk",
     "allow": ["Bash(agent-browser:*)"]
   },
+  "env": {
+    "AGENT_BROWSER_SCREENSHOT_DIR": "/tmp",
+    "AGENT_BROWSER_SCREENSHOT_FORMAT": "jpeg",
+    "AGENT_BROWSER_SCREENSHOT_QUALITY": "70"
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
