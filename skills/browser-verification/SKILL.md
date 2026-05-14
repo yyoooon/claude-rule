@@ -71,22 +71,34 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
 
 2. [Dev 서버 URL 확인]
    lsof -i -P -n | grep LISTEN | grep node
-   또는 :3000 기본값
+   또는 :3000 기본값. PORT 확정 후 다음 단계.
 
-3. [버퍼 클리어]
-   agent-browser console --clear
-   agent-browser network requests --clear
+3. [사용자 Chrome (9223) 살아있는지 확인 — 필수]
+   curl -s http://127.0.0.1:9223/json/version
+   - 응답 X → 즉시 status: FAIL + reason: "사용자 Chrome on 9223 not running. 검증은 사용자 띄운 크롬에서만 실시." → 종료.
+   - 자체 브라우저 spawn 금지. agent-browser open만 단독 호출하지 말 것 (--cdp 없으면 자체 Chrome 띄움).
+   - 이후 모든 agent-browser 호출에 `--cdp 9223` 명시.
 
-4. [뷰포트 + 네비게이션]
-   agent-browser viewport 375 812
-   agent-browser open http://localhost:PORT/route
+4. [타겟 탭 잡기]
+   agent-browser --cdp 9223 tab list
+   - 출력에서 `http://localhost:PORT` 매칭 탭의 stable id (예: t2) 찾기
+   - 매칭 탭 있음 → agent-browser --cdp 9223 tab t<N>
+   - 매칭 탭 없음 → agent-browser --cdp 9223 open http://localhost:PORT/route (--cdp로 사용자 Chrome에 새 탭 추가)
 
-5. [강제 리로드]
-   agent-browser eval "location.reload()" && agent-browser wait 800
+5. [버퍼 클리어]
+   agent-browser --cdp 9223 console --clear
+   agent-browser --cdp 9223 network requests --clear
+
+6. [뷰포트]
+   agent-browser --cdp 9223 viewport 375 812
+
+7. [네비게이션 + 강제 리로드]
+   현재 탭이 검증 대상 route가 아니면 → agent-browser --cdp 9223 open http://localhost:PORT/route
+   이미 맞는 route면 → agent-browser --cdp 9223 eval "location.reload()" && agent-browser --cdp 9223 wait 800
    페이지 stale 방지. 새 라우트 추가/Server Component 변경/HMR race window 모두 흡수.
 
-6. [동작 시뮬레이션] — eval IIFE 1콜로 묶을 것
-   agent-browser eval '
+8. [동작 시뮬레이션] — eval IIFE 1콜로 묶을 것
+   agent-browser --cdp 9223 eval '
    (async () => {
      const sleep = ms => new Promise(r => setTimeout(r, ms));
      const findBtn = txt => [...document.querySelectorAll("button, [role=button]")]
@@ -98,10 +110,10 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
      return { url: location.pathname, ... };
    })()'
 
-7. [무결성]
-   agent-browser console --json          → error/warning 0건 확인
-   agent-browser network requests --status 4xx --json   → 0건 확인
-   agent-browser network requests --status 5xx --json   → 0건 확인
+9. [무결성]
+   agent-browser --cdp 9223 console --json          → error/warning 0건 확인
+   agent-browser --cdp 9223 network requests --status 4xx --json   → 0건 확인
+   agent-browser --cdp 9223 network requests --status 5xx --json   → 0건 확인
 
 8. [리턴] 아래 형식, 200단어 이하
 
