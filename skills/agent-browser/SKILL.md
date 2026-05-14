@@ -122,6 +122,68 @@ const setReactValue = (el, val) => {
 | input by type | `inputMode === "decimal"` / `type === "number"` 등 |
 | `role=dialog` 시트 안만 | scope 좁히기 — `document.querySelector("[role=dialog]")` 안에서 검색 |
 
+## 속도 최적화 (정확성 손상 X)
+
+### a. 스냅샷 스코프로 토큰/시간 둘 다 절감
+전체 트리 덤프 금지. 항상 `-i -c -d 2 -s "<selector>"`:
+
+```bash
+agent-browser --cdp 9223 snapshot -i -c -d 2 -s "[role=dialog]"    # 시트 안만
+agent-browser --cdp 9223 snapshot -i -c -d 2 -s "main, [role=main]" # 메인 영역만
+```
+
+### b. `find` 액션으로 snapshot 생략
+"버튼 텍스트 X 클릭" 같은 단발은 snapshot 없이 1콜:
+
+```bash
+agent-browser --cdp 9223 find text "Log Now" click
+agent-browser --cdp 9223 find role button --name "Confirm" click
+```
+
+snapshot → @ref 클릭 2콜 → 1콜로 단축.
+
+### c. 고정 sleep 대신 element wait
+JS IIFE 안에서도 가능하면 polling. `await sleep(1500)`는 페이지가 빨리 떴어도 끝까지 기다림.
+
+```js
+const waitFor = async (sel, timeout=3000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const el = document.querySelector(sel);
+    if (el && el.offsetParent !== null) return el;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  throw new Error("timeout: " + sel);
+};
+
+// 사용
+findBtn("Log Now").click();
+await waitFor("input[inputmode=decimal]");   // 떴으면 즉시 진행
+```
+
+라우트 변경 후 첫 paint까지 평균 200-400ms — 고정 1.5s sleep을 200ms 가까이로 줄임.
+
+### d. 스크린샷은 JPEG + /tmp 디폴트
+환경변수 한 번 박아두면 매번 경로/포맷 안 적어도 됨:
+
+```bash
+export AGENT_BROWSER_SCREENSHOT_DIR=/tmp
+export AGENT_BROWSER_SCREENSHOT_FORMAT=jpeg
+export AGENT_BROWSER_SCREENSHOT_QUALITY=70
+```
+
+검증용 스샷이라면 jpeg 70%면 충분 (png 대비 ~5-10배 작음 → Read 토큰도 줄어듦).
+
+### e. 첫 콜 느리면 데몬 꺼져있던 것
+세션 시작 후 첫 `agent-browser` 호출이 유독 느린(2-3s) 경우, daemon 콜드 스타트. 두 번째부터 정상. 대처:
+
+```bash
+agent-browser --cdp 9223 eval "1" >/dev/null   # 워밍업 핑 (선택)
+```
+
+### f. snapshot/eval 결과 head로 잘라 토큰 절감
+구조 파악용 덤프는 `| head -50` 또는 `| tail -40`로 자름. visible buttons 10개만 봐도 충분.
+
 ## 사용자 시그널 → 즉시 전환
 
 | 사용자 신호 | 행동 |
