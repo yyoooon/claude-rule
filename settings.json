@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/scripts/playwright-verify-gate.sh"
+            "command": "$HOME/.claude/scripts/browser-verify-gate.sh"
           }
         ]
       }
