@@ -1,6 +1,6 @@
 ---
 name: browser-verification
-description: Auto-invoke when Stop hook injects "[auto-verify]" prompt, OR when user explicitly requests verification of interactions/flows/text changes. The skill dispatches a subagent that runs agent-browser against the dev server, judges if changes need verification, and (on failure) loops with `superpowers:systematic-debugging` to self-fix up to 2 iterations. DO NOT use for pixel-perfect visual diffing.
+description: Auto-invoke when Stop hook injects "[auto-verify]", or when user explicitly requests verification of behavior/interactions/console-errors after code changes. NOT for pixel-perfect visual diffing — use Storybook/PerfectPixel for that.
 ---
 
 # Browser Verification
