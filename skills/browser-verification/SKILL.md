@@ -104,9 +104,10 @@ agent-browser --cdp 9223 tab list 2>&1
 ```
 
 - 9223 응답 없음 → 즉시 사용자에게 "검증용 크롬 9223으로 띄워주세요" 안내 + sentinel 기록 + 종료
-- 출력에서 expected URL과 매칭되는 tab id (예: t2) 추출
+- 출력에서 expected URL과 **정확히 일치**하는 tab id (예: t2) 추출
 - **매칭 탭 없음** → expected URL로 새 탭 열기 (`agent-browser --cdp 9223 open http://localhost:<PORT>/<route>`)
 - **매칭 탭 있지만 사용자가 다른 탭으로 navigate했을 가능성** → tab switch 후 location.pathname 검증 (Step 3 eval 안에서)
+- ⚠️ **유사 URL 다른 탭으로 자동 switch 금지**: 예) expected가 `/record`인데 `/tracker/heartrate` 탭에 같은 컴포넌트가 떠 있더라도, 진입 경로/상태가 다르면 검증 동치 X. expected와 정확히 일치하지 않으면 새 탭 열거나 사용자에게 안내.
 
 ### Step 3 — Reload + 검증 (1콜, IIFE)
 
