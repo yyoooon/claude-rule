@@ -156,6 +156,21 @@ PASS면 1줄 보고 후 sentinel 기록. FAIL이면 짧은 사유 + sentinel 기
 
 `Agent` 툴로 `general-purpose` 서브에이전트를 dispatch한다. 메인 컨텍스트에 snapshot/DOM dump가 누적되지 않게 하기 위함.
 
+### 모델 선택
+
+**디폴트: `model: "haiku"`** — DOM 검증/console/network 체크는 단순 작업이라 Haiku로 충분하고 thinking turn이 Opus 대비 2-3배 빠르다. 70초 → 30-40초.
+
+**예외로 Opus/Sonnet 선택**:
+- Fix Loop 2회차 (서브에이전트가 직접 systematic-debugging까지 해야 할 때)
+- diff가 50줄 이상 + 여러 파일에 걸친 변경 (가설 수립 복잡도 높음)
+- 첫 dispatch에서 Haiku가 confidence: low 리턴
+
+### Tool Turn 압축 원칙
+
+서브에이전트의 LLM thinking turn이 진짜 병목이다 (각 turn 3-5초). 따라서 **여러 bash 명령은 한 turn에 묶어서 보낸다**.
+
+Brief 템플릿의 step 5-8 (버퍼 클리어 / 네비게이션 / 동작 시뮬레이션 / 무결성)을 가능한 한 `&&` 또는 `;` 체이닝으로 합쳐 1-2 turn에 완료. 호출 횟수가 아니라 **LLM tool turn 수**가 비용. step별 따로 호출하면 5+ turn × 4초 = 20초 낭비.
+
 ### Brief 템플릿
 
 ```
