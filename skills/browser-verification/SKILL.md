@@ -176,11 +176,12 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    - 자체 브라우저 spawn 금지. agent-browser open만 단독 호출하지 말 것 (--cdp 없으면 자체 Chrome 띄움).
    - 이후 모든 agent-browser 호출에 `--cdp 9223` 명시.
 
-4. [타겟 탭 잡기]
+4. [타겟 탭 잡기 + URL Mismatch 가드]
    agent-browser --cdp 9223 tab list
-   - 출력에서 `http://localhost:PORT` 매칭 탭의 stable id (예: t2) 찾기
+   - 출력에서 expected URL (`http://localhost:PORT/<route>`) 매칭 탭의 stable id (예: t2) 찾기
    - 매칭 탭 있음 → agent-browser --cdp 9223 tab t<N>
    - 매칭 탭 없음 → agent-browser --cdp 9223 open http://localhost:PORT/route (--cdp로 사용자 Chrome에 새 탭 추가)
+   - **사용자가 검증 도중 다른 페이지로 navigate할 수 있음.** 다음 eval 안에서 location.pathname을 expected와 다시 검증하고, mismatch면 즉시 reason: "tab navigated away — 사용자가 검증 대상 페이지에서 벗어남"로 SKIP 리턴.
 
 5. [버퍼 클리어]
    agent-browser --cdp 9223 console --clear
