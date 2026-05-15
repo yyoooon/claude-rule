@@ -57,7 +57,9 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 디렉토리/파일 패턴 평가:
   - 변경에 다음이 모두 해당? → Light Path
     * 변경 파일이 *.tsx / *.css / *.scss 만 (시각/JSX 한정)
-    * src/lib/ src/service/ src/app/api/ middleware.ts route handlers 변경 없음
+    * src/lib/ src/service/ src/app/api/ 변경 없음
+    * Next.js 라우팅 게이트 (`src/middleware.ts`) 변경 없음 — 이 파일 1줄만 바뀌어도 무조건 Full
+    * route handlers (route.ts) 변경 없음
     * 새 파일 추가 없음 (untracked가 추가된 컴포넌트면 light 가능, 페이지면 full)
     * 누적 추가 라인 < 80
   - 다음 중 하나라도 해당 → Full Path
