@@ -360,7 +360,9 @@ mkdir -p "$PROJECT_ROOT/.claude"
 |---|---|---|
 | CSS 속성 비교 (Visual Diff) | `computedStyle`을 뽑아 패딩/색상을 Figma와 일치하는지 비교 | AI는 시각 검증에 취약. 동작과 에러 검증에만 집중. |
 | **뷰포트 변경** | `agent-browser viewport ...` 호출해서 사용자가 띄운 창 크기를 멋대로 바꿈 | 절대 viewport 호출 금지. 사용자가 띄운 탭 크기 그대로 사용. |
-| 메인 컨텍스트 오염 | 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | 항상 서브에이전트로 dispatch. |
+| 메인 컨텍스트 오염 | Full Path에서 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | Full path는 항상 서브에이전트로 dispatch. Light path는 메인 직접 OK 단, eval 결과를 50줄 이내로 압축. |
+| **잘못된 탭 캡처** | 사용자가 검증 중에 다른 페이지로 navigate한 사이에 우리는 t<N>으로 잘못된 화면 캡처 | tab switch 후 항상 eval 안에서 `location.pathname`을 expected와 재검증. mismatch면 즉시 사용자 안내 + 종료 (자동 navigate 강제 X — 사용자 작업 흐름 침범). |
+| **풀 시퀀스 over-engineering** | 차트 SVG 한 줄 시각 수정에도 서브에이전트 30–60초 풀 dispatch | Verification Tier Selection으로 light path 진입. 변경 영향도에 맞게 검증 비용 분배. |
 | 페이지 stale | HMR 신뢰하고 reload 생략 | 검증 시작 시 항상 `eval "location.reload()"`. |
 | CLI 호출 누적 | step마다 agent-browser 따로 호출 | 멀티스텝은 eval IIFE 1콜 (agent-browser 스킬 참고). |
 | **자체 브라우저 spawn** | `--cdp` 없이 `agent-browser open ...` 호출 → 별도 Chrome 띄움 | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것 (절대 자체 spawn 금지). |
