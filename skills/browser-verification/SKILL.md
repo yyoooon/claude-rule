@@ -98,7 +98,7 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    이미 맞는 route면 → agent-browser --cdp 9223 eval "location.reload()" && agent-browser --cdp 9223 wait 800
    페이지 stale 방지. 새 라우트 추가/Server Component 변경/HMR race window 모두 흡수.
 
-8. [동작 시뮬레이션] — eval IIFE 1콜로 묶을 것
+7. [동작 시뮬레이션] — eval IIFE 1콜로 묶을 것
    agent-browser --cdp 9223 eval '
    (async () => {
      const sleep = ms => new Promise(r => setTimeout(r, ms));
