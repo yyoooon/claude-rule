@@ -111,12 +111,12 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
      return { url: location.pathname, ... };
    })()'
 
-9. [무결성]
+8. [무결성]
    agent-browser --cdp 9223 console --json          → error/warning 0건 확인
    agent-browser --cdp 9223 network requests --status 4xx --json   → 0건 확인
    agent-browser --cdp 9223 network requests --status 5xx --json   → 0건 확인
 
-10. [리턴] 아래 형식, 200단어 이하
+9. [리턴] 아래 형식, 200단어 이하
 
 ⚠️ 금지:
 - computedStyle 비교, 픽셀 단위 검증
