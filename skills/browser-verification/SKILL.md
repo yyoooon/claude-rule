@@ -56,19 +56,26 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 ```
 디렉토리/파일 패턴 평가:
   - 변경에 다음이 모두 해당? → Light Path
-    * 변경 파일이 *.tsx / *.css / *.scss 만 (시각/JSX 한정)
-    * src/lib/ src/service/ src/app/api/ 변경 없음
+    * 변경 파일이 다음 중 하나만:
+        - *.tsx / *.css / *.scss (시각/JSX)
+        - src/app/**/_components/**/*.ts(x) (page-scoped 컴포넌트)
+        - src/app/**/_lib/**/*.ts (page-scoped 유틸 — 정책 함수, 변환, 색상 매핑 등)
+        - src/app/**/_mock/**/*.ts (mock 데이터)
+        - src/app/**/_store/**/*.ts (page-scoped store)
+    * src/lib/ src/service/ src/app/api/ 변경 없음 (전역 서비스 layer는 항상 Full)
     * Next.js 라우팅 게이트 (`src/middleware.ts`) 변경 없음 — 이 파일 1줄만 바뀌어도 무조건 Full
     * route handlers (route.ts) 변경 없음
-    * 새 파일 추가 없음 (untracked가 추가된 컴포넌트면 light 가능, 페이지면 full)
+    * 새 page.tsx 추가 없음 (untracked가 page면 Full, _components/_lib 추가면 Light 가능)
     * 누적 추가 라인 < 80
   - 다음 중 하나라도 해당 → Full Path
     * 라우팅/middleware/auth 파일 변경
-    * service/api/queries/mutations 변경
+    * 전역 service/api/queries/mutations 변경 (src/service/, src/app/api/)
     * 새 page.tsx 또는 새 route 추가
-    * Zustand store / context provider 변경
+    * Zustand store / context provider 변경 (page-scoped _store/ 제외)
     * 80줄 이상 누적 변경
 ```
+
+**Page-scoped 디렉토리가 light인 이유**: `src/app/<route>/_lib/`, `_components/`, `_mock/`, `_store/`는 Next.js 컨벤션상 라우터가 무시하는 페이지 내부 모듈. 영향 범위가 한 페이지로 제한되므로 시각 검증과 동등하게 다룬다. 전역 영향이 가능한 `src/lib/`, `src/service/`와 구분.
 
 ### Light Path 핵심 원칙
 
