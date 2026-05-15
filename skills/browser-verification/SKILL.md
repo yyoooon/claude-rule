@@ -43,9 +43,104 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 
 이 시그널을 받으면:
 1. 이번 턴에 사용자가 코드를 수정하지 않았다면 (예: 메모리 조회, 문서 작성만) → 즉시 sentinel 기록 후 종료 (Sentinel Management 섹션 참고). hook의 spurious trigger 흡수용.
-2. 그렇지 않으면 아래 "Subagent Dispatch Protocol" 진행.
+2. 그렇지 않으면 아래 "Verification Tier Selection"으로 tier 판정 → Light Path 또는 Full Path 진입.
 
-## Subagent Dispatch Protocol
+## Verification Tier Selection
+
+검증 비용은 변경 영향도에 비례해야 한다. **무조건 서브에이전트 dispatch는 over-engineering이다.** 매 사이클마다 30–60초 풀 시퀀스를 도는 대신, 변경 유형에 따라 light/full을 분기한다.
+
+### Tier 결정 알고리즘
+
+`git diff --name-only HEAD` + `git diff HEAD --stat` 결과로 다음을 평가한다:
+
+```
+디렉토리/파일 패턴 평가:
+  - 변경에 다음이 모두 해당? → Light Path
+    * 변경 파일이 *.tsx / *.css / *.scss 만 (시각/JSX 한정)
+    * src/lib/ src/service/ src/app/api/ middleware.ts route handlers 변경 없음
+    * 새 파일 추가 없음 (untracked가 추가된 컴포넌트면 light 가능, 페이지면 full)
+    * 누적 추가 라인 < 80
+  - 다음 중 하나라도 해당 → Full Path
+    * 라우팅/middleware/auth 파일 변경
+    * service/api/queries/mutations 변경
+    * 새 page.tsx 또는 새 route 추가
+    * Zustand store / context provider 변경
+    * 80줄 이상 누적 변경
+```
+
+### Light Path 핵심 원칙
+
+- **메인 Claude가 직접** agent-browser 호출 (서브에이전트 X)
+- agent-browser 호출은 최대 3개 (tab list 검증 / reload+eval IIFE / console 에러)
+- 목표: 5–10초 안에 결과
+- 메인 컨텍스트 오염 최소화를 위해 eval 결과는 짧은 JSON만 (50줄 이내)
+- 실패 시 즉시 사용자 보고 (자동 fix loop 들어가지 않음 — light path는 빠른 sanity check)
+
+### Full Path 진입 조건
+
+- Tier 알고리즘이 full 판정
+- Light path에서 unexpected 에러 발견 (메인이 fix 가능 범위를 넘어선다고 판단)
+- 사용자가 명시적으로 "꼼꼼히 검증" 요청
+
+## Light Path Protocol
+
+메인 Claude가 직접 실행. 서브에이전트 dispatch 안 함.
+
+### Step 1 — Expected URL 결정
+
+변경된 파일 경로에서 expected URL을 추론한다:
+- `src/app/(home)/...` → `/`
+- `src/app/record/...` → `/record`
+- `src/app/onboarding/...` → `/onboarding`
+- `src/components/...` → 컴포넌트가 어디서 import되는지 grep으로 1차 매핑 후 가장 가능성 큰 라우트
+- 추론 실패 시 → Full Path로 escalate
+
+### Step 2 — Chrome 9223 / Tab 확인 (1콜)
+
+```bash
+agent-browser --cdp 9223 tab list 2>&1
+```
+
+- 9223 응답 없음 → 즉시 사용자에게 "검증용 크롬 9223으로 띄워주세요" 안내 + sentinel 기록 + 종료
+- 출력에서 expected URL과 매칭되는 tab id (예: t2) 추출
+- **매칭 탭 없음** → expected URL로 새 탭 열기 (`agent-browser --cdp 9223 open http://localhost:<PORT>/<route>`)
+- **매칭 탭 있지만 사용자가 다른 탭으로 navigate했을 가능성** → tab switch 후 location.pathname 검증 (Step 3 eval 안에서)
+
+### Step 3 — Reload + 검증 (1콜, IIFE)
+
+```bash
+agent-browser --cdp 9223 tab t<N> >/dev/null
+agent-browser --cdp 9223 eval '
+(async () => {
+  if (location.pathname !== "<expectedPath>") {
+    return { ok: false, reason: "tab navigated away", currentUrl: location.pathname };
+  }
+  location.reload();
+  await new Promise(r => setTimeout(r, 1500));
+  // 변경 검증 — 새로 추가된 DOM/텍스트/속성 확인
+  const result = { ok: true, url: location.pathname /* + 변경 관련 추출 값 */ };
+  return result;
+})()
+'
+```
+
+- `tab navigated away` 리턴 → 사용자에게 "검증 대상 탭이 다른 페이지로 이동했습니다. 다시 `/<expectedPath>`로 가주세요" 안내 + sentinel 기록 + 종료
+- 변경 관련 값이 기대와 다름 → 사용자에게 짧게 보고하고 종료 (light path는 fix loop 안 함)
+
+### Step 4 — Console 에러 체크 (1콜)
+
+```bash
+agent-browser --cdp 9223 console --json 2>&1 | head -200
+```
+
+- 출력이 너무 길면 grep으로 error/warn level만 필터: `... | jq '.data.messages[] | select(.type=="error" or .type=="warning")'`
+- d3 / SVG / 변경 파일 관련 error 0건이면 PASS
+
+### Step 5 — 보고 + Sentinel
+
+PASS면 1줄 보고 후 sentinel 기록. FAIL이면 짧은 사유 + sentinel 기록 X (사용자 추가 수정 유도).
+
+## Subagent Dispatch Protocol (Full Path)
 
 `Agent` 툴로 `general-purpose` 서브에이전트를 dispatch한다. 메인 컨텍스트에 snapshot/DOM dump가 누적되지 않게 하기 위함.
 
