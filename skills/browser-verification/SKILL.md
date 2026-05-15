@@ -210,34 +210,41 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    - 매칭 탭 없음 → agent-browser --cdp 9223 open http://localhost:PORT/route (--cdp로 사용자 Chrome에 새 탭 추가)
    - **사용자가 검증 도중 다른 페이지로 navigate할 수 있음.** 다음 eval 안에서 location.pathname을 expected와 다시 검증하고, mismatch면 즉시 reason: "tab navigated away — 사용자가 검증 대상 페이지에서 벗어남"로 SKIP 리턴.
 
-5. [버퍼 클리어]
-   agent-browser --cdp 9223 console --clear
-   agent-browser --cdp 9223 network requests --clear
+5-7. [버퍼 클리어 + 리로드 + 동작 시뮬레이션] — 1개 bash 호출로 묶기
+   tool turn 수가 진짜 비용. 다음과 같이 `&&` 체이닝 또는 한 줄로 결합:
 
-   ⚠️ 뷰포트는 절대 변경하지 말 것. 사용자가 띄운 탭 크기 그대로 사용 (`agent-browser viewport` 호출 금지).
-
-6. [네비게이션 + 강제 리로드]
-   현재 탭이 검증 대상 route가 아니면 → agent-browser --cdp 9223 open http://localhost:PORT/route
-   이미 맞는 route면 → agent-browser --cdp 9223 eval "location.reload()" && agent-browser --cdp 9223 wait 800
-   페이지 stale 방지. 새 라우트 추가/Server Component 변경/HMR race window 모두 흡수.
-
-7. [동작 시뮬레이션] — eval IIFE 1콜로 묶을 것
+   ```bash
+   agent-browser --cdp 9223 console --clear >/dev/null && \
+   agent-browser --cdp 9223 network requests --clear >/dev/null && \
    agent-browser --cdp 9223 eval '
    (async () => {
      const sleep = ms => new Promise(r => setTimeout(r, ms));
-     const findBtn = txt => [...document.querySelectorAll("button, [role=button]")]
-       .filter(el => el.offsetParent !== null)
-       .find(el => el.textContent?.trim().includes(txt));
+     if (location.pathname !== "<expectedPath>") {
+       return { ok: false, reason: "tab navigated away", currentUrl: location.pathname };
+     }
+     location.reload();
+     await sleep(1200);
      // 추가/변경된 핸들러 클릭/입력 ...
      // 새 텍스트/엘리먼트 DOM 렌더 확인 ...
      // API/라우팅 변경 시 URL 응답 확인 ...
-     return { url: location.pathname, ... };
-   })()'
+     return { ok: true, url: location.pathname /* + 변경 관련 attribute/text */ };
+   })()
+   '
+   ```
 
-8. [무결성]
-   agent-browser --cdp 9223 console --json          → error/warning 0건 확인
-   agent-browser --cdp 9223 network requests --status 4xx --json   → 0건 확인
-   agent-browser --cdp 9223 network requests --status 5xx --json   → 0건 확인
+   ⚠️ 뷰포트는 절대 변경하지 말 것. 사용자가 띄운 탭 크기 그대로 사용 (`agent-browser viewport` 호출 금지).
+
+8. [무결성] — 1개 bash 호출로 묶기
+   console + network 4xx + 5xx를 따로 호출하지 말고 jq로 한 번에:
+
+   ```bash
+   agent-browser --cdp 9223 console --json 2>&1 | \
+     jq '{errors: [.data.messages[]? | select(.type=="error" or .type=="warning")]}' && \
+   agent-browser --cdp 9223 network requests --json 2>&1 | \
+     jq '{bad: [.data.requests[]? | select(.status >= 400)]}'
+   ```
+
+   둘 다 빈 배열이면 PASS.
 
 9. [리턴] 아래 형식, 200단어 이하
 
@@ -245,7 +252,7 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
 - computedStyle 비교, 픽셀 단위 검증
 - 전체 DOM snapshot dump (snapshot 명령 자제 — eval로 필요 정보만 추출)
 - 50줄 이상 결과 출력
-- agent-browser CLI를 step마다 따로 호출하는 안티패턴 (멀티스텝은 eval IIFE 1콜)
+- step별로 따로 agent-browser CLI 호출 (멀티스텝은 한 bash 줄에 `&&` 체이닝 또는 eval IIFE 1콜로 합칠 것 — LLM tool turn이 가장 큰 비용)
 ```
 
 ### 리턴 형식
