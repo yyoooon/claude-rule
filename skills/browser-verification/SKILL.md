@@ -339,14 +339,19 @@ mkdir -p "$PROJECT_ROOT/.claude"
 ```
 1. [Auto] Stop hook에서 [auto-verify] 시그널 감지 OR [Manual] 사용자 요청
 2. 이번 턴에 코드 변경 없으면 sentinel만 기록하고 종료
-3. Subagent dispatch (general-purpose) — Brief 템플릿 사용
-4. 서브에이전트 결과 분류:
+3. Verification Tier Selection — diff 패턴으로 light/full 분기
+4. Light Path: 메인 직접 (tab list / reload+eval / console) — 5–10초
+   - PASS → 1줄 보고 + sentinel 기록 → 종료
+   - 변경 미반영/console 에러 → 짧게 사유 보고 + sentinel 안 기록 (사용자 수정 유도)
+   - light path가 cover 못 하는 변경 발견 → Full Path로 escalate
+5. Full Path: Subagent dispatch (general-purpose) — Brief 템플릿 사용
+6. 서브에이전트 결과 분류:
    - SKIP → 짧게 보고 + sentinel 기록 → 종료
    - PASS → 짧게 보고 + sentinel 기록 → 종료
    - FAIL (인프라 에러) → 사용자 안내 + sentinel 기록 → 종료
    - FAIL (코드 문제) → Fix Loop
-5. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
-6. 최종 결과 보고
+7. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
+8. 최종 결과 보고
 ```
 
 ## Common Mistakes
