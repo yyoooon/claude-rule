@@ -62,6 +62,11 @@ agent-browser --cdp 9223 eval '
 
 UI가 단계마다 바뀌면 (모달/시트 열고 닫힘), **다음 단계 직전에 한 번 더** 덤프해서 새 selector 파악.
 
+**예외 — dump에서 다음 트리거가 이미 잡혔다면 별도 호출 금지:**
+- 첫 dump 결과에 다음 단계 버튼 텍스트/입력 selector가 이미 보이면, 끊지 말고 **단일 IIFE 안에서 `waitFor` + 클릭**으로 묶을 것.
+- 예: "Record Your Weight" 클릭 → 모달 dump에서 "Log Now" 텍스트 확인 → 별도 eval로 Log Now 클릭 ❌. 처음부터 한 IIFE에 클릭→waitFor(dialog)→Log Now 클릭→waitFor(input)→fill→submit 묶어서 1콜 ✅.
+- "다음 UI는 진짜 모르는" 케이스 (동적 폼, 조건부 분기 등) 한정으로만 중간 dump 허용.
+
 ### 3. 전체 플로우는 eval IIFE 1회
 
 구조 파악 끝나면 한 IIFE에 전부 묶어서 1회 호출. 중간 click/wait도 JS 안에서:
