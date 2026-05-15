@@ -325,3 +325,5 @@ agent-browser --cdp 9223 eval "1" >/dev/null   # 워밍업 핑 (선택)
 - ❌ `tab 2` (positional integer)
 - ❌ `input.value = "..."` (React 안 감지)
 - ❌ snapshot 5번 이상 반복 — 그 시점에 멈추고 eval 묶음으로
+- ❌ **모달/시트 띄운 직후 CLI 호출 종료 후 별도 eval로 재진입** — 사용자가 보는 화면에 "모달 뜬 채 멈춰있는 텀"이 그대로 노출됨. 트리거 텍스트가 이미 보였다면 한 IIFE에서 `waitFor` + 클릭으로 이어 갈 것.
+- ❌ 모달/페이지 전환 후 고정 `sleep(1000ms+)` — `waitFor()` 폴링이 200~400ms면 충분. 고정 sleep은 그 차이만큼 화면에 텀으로 보임.
