@@ -91,10 +91,9 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    agent-browser --cdp 9223 console --clear
    agent-browser --cdp 9223 network requests --clear
 
-6. [뷰포트]
-   agent-browser --cdp 9223 viewport 375 812
+   ⚠️ 뷰포트는 절대 변경하지 말 것. 사용자가 띄운 탭 크기 그대로 사용 (`agent-browser viewport` 호출 금지).
 
-7. [네비게이션 + 강제 리로드]
+6. [네비게이션 + 강제 리로드]
    현재 탭이 검증 대상 route가 아니면 → agent-browser --cdp 9223 open http://localhost:PORT/route
    이미 맞는 route면 → agent-browser --cdp 9223 eval "location.reload()" && agent-browser --cdp 9223 wait 800
    페이지 stale 방지. 새 라우트 추가/Server Component 변경/HMR race window 모두 흡수.
