@@ -258,7 +258,7 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | 실수 | 발생 패턴 | 방지 |
 |---|---|---|
 | CSS 속성 비교 (Visual Diff) | `computedStyle`을 뽑아 패딩/색상을 Figma와 일치하는지 비교 | AI는 시각 검증에 취약. 동작과 에러 검증에만 집중. |
-| 화면 깨짐 방치 | 데스크톱 뷰만 확인 | 반드시 viewport를 375 812로 설정. |
+| **뷰포트 변경** | `agent-browser viewport ...` 호출해서 사용자가 띄운 창 크기를 멋대로 바꿈 | 절대 viewport 호출 금지. 사용자가 띄운 탭 크기 그대로 사용. |
 | 메인 컨텍스트 오염 | 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | 항상 서브에이전트로 dispatch. |
 | 페이지 stale | HMR 신뢰하고 reload 생략 | 검증 시작 시 항상 `eval "location.reload()"`. |
 | CLI 호출 누적 | step마다 agent-browser 따로 호출 | 멀티스텝은 eval IIFE 1콜 (agent-browser 스킬 참고). |
