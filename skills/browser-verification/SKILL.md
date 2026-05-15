@@ -287,6 +287,30 @@ network_errors: []
 | Auth 필요 + 토큰 없음 | SKIP + reason → 사용자 노티. |
 | Diff 너무 큼 (대규모 리팩터) | SKIP + reason "manual review recommended" → 사용자 안내. |
 
+## Proactive Status Communication
+
+검증 사이클이 길어질 수 있거나 이슈를 발견했을 때, **메인 Claude는 한 줄 알림을 띄워 사용자가 답답하지 않게 한다.** 사용자는 자기 작업 중이라 "지금 뭐 하는지" 모르면 불안.
+
+### 알림 필수 시점
+
+| 시점 | 메시지 예시 |
+|---|---|
+| Tier 결정 직후 | "Light path 진입 (5–10초 예상)" / "Full path — 서브에이전트 dispatch (30–60초 예상)" |
+| Chrome 9223 미응답 | "검증용 크롬(9223) 미응답 — 검증 중단. 9223 포트로 크롬 띄워주세요." → sentinel 기록 + 종료 |
+| Dev 서버 미기동 | "Dev 서버 미기동 — 검증 스킵. `yarn dev` 후 재시도." → 종료 |
+| Expected URL 추론 실패 | "변경 파일에서 검증 대상 라우트 추론 실패 — Full path로 escalate" 또는 종료 |
+| URL Mismatch 감지 | "검증 대상 탭이 `/<other>`로 이동됨. `/<expected>`로 돌아가주시거나 검증 스킵 가능" → 종료 |
+| Light path에서 unexpected console 에러 | "Light path 도중 console 에러 발견 — 짧게 사유: ..." → 종료 (fix loop X) |
+| Full path fix loop 1회차 진입 | "1차 검증 실패 → 수정 후 재검증 중" |
+| Full path 최종 에스컬레이션 | "2회 시도 후 막힘 — 발견 이슈 / 시도한 수정 / 추측 root cause 정리" |
+
+### 알림 형식 룰
+
+- **한 줄, 결과 위주**. 진행률 % / 단계 번호 같은 사족 X
+- 사용자 메모리 "결과만 짧게 보고" 룰 준수
+- 같은 사이클에 같은 phase 알림 중복 금지
+- 알림은 Bash/Tool 호출 *직전* 또는 *결과 받자마자*. 호출 도중 long-running task 동안 띄울 수 없으니 dispatch 직전에 예상 시간 안내.
+
 ## Sentinel Management
 
 무한 루프 방지용. 검증 사이클이 어떤 형태로든 종료되면 sentinel 파일에 현재 diff 해시를 기록한다.
