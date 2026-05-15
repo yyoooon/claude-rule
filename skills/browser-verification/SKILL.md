@@ -120,8 +120,10 @@ agent-browser --cdp 9223 eval '
   }
   location.reload();
   await new Promise(r => setTimeout(r, 1500));
-  // 변경 검증 — 새로 추가된 DOM/텍스트/속성 확인
-  const result = { ok: true, url: location.pathname /* + 변경 관련 추출 값 */ };
+  // 변경 검증 — DOM attribute / textContent 위주 (computed style 비교는 Visual Diff 금지 룰에 걸림)
+  // OK: el.getAttribute("fill"), el.textContent, querySelector(".new-class") 존재 여부
+  // NOT OK: getComputedStyle(el).color/padding 등 픽셀/색상 픽업
+  const result = { ok: true, url: location.pathname /* + 변경 관련 attribute/text 추출 값 */ };
   return result;
 })()
 '
