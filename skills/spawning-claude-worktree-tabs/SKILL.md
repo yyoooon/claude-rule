@@ -123,6 +123,48 @@ Skip-don't-fail policy: any single worktree that can't be finished (uncommitted 
 - The main checkout itself must be clean (no uncommitted changes), otherwise the ff-merge would mix in unrelated edits.
 - You must be on the source branch (the one used when spawning). On a different branch, the script finds no matching worktrees and exits clean.
 
+## Post-finish integration check (parallel merge hygiene)
+
+After `finish.sh` folds multiple worktrees into the source branch, the source can be **silently broken** even when each worktree's tree was clean. Two failure modes seen in the wild:
+
+### 1. Untracked file orphaned inside a worktree
+
+A file added during the worktree session but never `git add`ed sits untracked. `finish.sh`'s clean-tree check **does** detect it and skips the worktree — but if the skip is ignored or finish was never run, the file dies with the worktree teardown while **other committed files import it**. The build fails on next CI run with `Cannot find module './foo'` even though the import looks correct.
+
+Concrete case: worktree b had `src/.../_lib/glucosePolicy.ts` untracked, while `GlucoseDayChart.tsx` (committed) imported from it. CI build fail.
+
+**Mitigation before tearing down:**
+```bash
+# Scan every worktree for untracked + modified files
+for w in .worktrees/*/; do
+  out=$(git -C "$w" status --porcelain)
+  [[ -n "$out" ]] && echo "=== $w ===" && echo "$out"
+done
+```
+
+If a worktree shows untracked files, **investigate before discarding** — a forgotten `git add` is the common cause. Stage and commit (or copy to the right branch) before running `finish.sh`.
+
+### 2. Semantic conflict after parallel merges
+
+Each worktree's file-level diff merges cleanly (no `<<<<<<` markers, no overlapping edits), but the **combined source branch is type-inconsistent**:
+
+- Worktree A changes a type's shape (e.g., `IHealthRecordItem.value: string | IGlucoseValue`)
+- Worktree B changes callers in different files to a new prop convention (`data` → `record`)
+- Worktree C adds mock data using a shape only the OLD union allowed
+
+No file conflicts → all three rebases succeed → CI tsc fails on 30+ unrelated sites.
+
+**Mitigation: run a unified type check on the source branch after merge, before pushing.**
+
+```bash
+git switch <source-branch>
+# Pull in all the finished worktree merges, then:
+npx tsc --noEmit          # TypeScript projects
+# or: <pm> run typecheck / <pm> run build
+```
+
+Do NOT trust `lint pass` as a proxy — lint catches import order, not cross-file type breakage.
+
 ## Common Mistakes
 
 - **Running from a nested worktree** — script refuses; switch to the main checkout first.
