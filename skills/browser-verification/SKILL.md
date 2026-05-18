@@ -351,13 +351,13 @@ network_errors: []
 검증 사이클 진입 시 (Tier Selection 직후) 시작 시각을 stash하고, sentinel 기록 직전에 종료 시각과의 차이를 계산한다.
 
 ```bash
-# 진입 시
-T0=$(date +%s%3N)
+# 진입 시 (macOS/Linux 공용 — date +%s%3N은 macOS에서 %N 미지원으로 "N" 리터럴이 붙어 산술 실패)
+T0=$(python3 -c "import time; print(int(time.time()*1000))")
 
 # ... 모든 agent-browser 호출, eval, console 체크 등 ...
 
 # 종료 시 (sentinel 기록과 함께 같은 turn에)
-T1=$(date +%s%3N); ELAPSED_MS=$((T1-T0))
+T1=$(python3 -c "import time; print(int(time.time()*1000))"); ELAPSED_MS=$((T1-T0))
 { git diff HEAD; ...; } | sha256sum | awk '{print $1}' > .claude/.last-verified-hash
 echo "${ELAPSED_MS}" > .claude/.verify-elapsed-ms
 ```
