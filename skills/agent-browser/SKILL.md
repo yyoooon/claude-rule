@@ -173,9 +173,25 @@ const setReactValue = (el, val) => {
 | input by type | `inputMode === "decimal"` / `type === "number"` 등 |
 | `role=dialog` 시트 안만 | scope 좁히기 — `document.querySelector("[role=dialog]")` 안에서 검색 |
 
-## 스타일/시각 검증 (Figma 4-check)
+## 스타일 함정 디버깅 (Figma 적용 후 의문 제기 시)
 
-agent-browser는 픽셀 단위 자동 회귀는 못 하지만, **Figma 시안과 구현 토큰이 일치하는지** 검증엔 잘 맞는다. 메모리의 `applying-figma-designs` 4-check 패턴을 eval IIFE로:
+**1차 검증은 사용자 눈으로** — Figma 시안과 화면을 직접 비교. agent-browser는 **그 검증에서 "왜 좁아 보여" / "왜 더 흐려" 같은 의문이 나왔을 때 원인을 핀포인트로 잡는 디버깅 수단**.
+
+전반 시각 일치 검증 도구 아님. 특정 함정에만 우위.
+
+### 거의 유일 수단인 함정
+
+눈으로 못 잡는 케이스 — 이때만 agent-browser:
+
+| 케이스 | 왜 눈으로 못 잡나 |
+|--------|---------------------|
+| 부모-자식 opacity **곱연산** (50%×50%=25%) | "좀 흐릿한가?" 수준. 원인 추적 X |
+| 중첩 padding **합산** (outer + inner) | "왜 좁지?" 수준. 어디서 좁아진지 X |
+| transform/scale 적용 시 실 사이즈 vs 시각 사이즈 | 사람 눈엔 같이 보임 |
+
+전반 색감/폰트/정렬 의심이면 → agent-browser 말고 코드(Tailwind 클래스) 직접 보는 게 빠름.
+
+### 핀포인트 inspect
 
 ```bash
 agent-browser --cdp 9223 eval '
@@ -187,7 +203,7 @@ agent-browser --cdp 9223 eval '
     const r = el.getBoundingClientRect();
     return {
       label,
-      rect: { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) },
+      rect: { w: Math.round(r.width), h: Math.round(r.height) },
       color: cs.color,
       background: cs.backgroundColor,
       font: `${cs.fontSize}/${cs.lineHeight} ${cs.fontWeight}`,
@@ -200,26 +216,21 @@ agent-browser --cdp 9223 eval '
   return [
     inspect("[data-slot=card]", "card"),
     inspect("[data-slot=card] h3", "title"),
-    inspect("[data-slot=card] button", "cta"),
   ];
 })()
 '
 ```
 
-**4-check 항목** (메모리 `feedback_figma_apply_verification.md`):
-1. 컨테이너 간 **gap** — `gap` 값 비교
-2. **Figma vs 현재 시각 비교** — screenshot 1컷 떠서 같이 Read (vision)
-3. **부모-자식 opacity 분리** — `opacity` 값 비교
-4. **중첩 padding 합산** — 부모/자식 padding 더해서 실 시각적 spacing 추출
+중첩 padding 합산 추적 시는 `cs.paddingLeft` 등 4방향 따로 query.
+`rect.x/y`는 viewport 기준이라 스크롤·디바이스로 변동 → 디폴트 제외.
 
-screenshot은 vision 비교용 (jpeg 70%로 작게):
+### 한계 (사용 전 인지)
 
-```bash
-agent-browser --cdp 9223 screenshot impl.jpeg  # AGENT_BROWSER_SCREENSHOT_DIR 디폴트로 /tmp
-# Figma 시안 스크린샷 옆에 두고 같이 Read → 갭/정렬/대조 비교
-```
+- **색상 단위 불일치** — `cs.color`는 `rgb(255,255,255)` 반환. Figma hex와 직접 비교 X → 변환 후 대조.
+- **shorthand 문자열** — `padding`/`gap`은 합쳐서 나옴. 방향별 비교 필요하면 각 방향 따로 query.
+- **CSS 변수 resolved** — `var(--space-4)` → `"16px"`로만 보임. "토큰 이름 일치"는 못 보고 "최종 픽셀 일치"만 확인.
 
-⚠️ 금지: **자동 검증 스킬(browser-verification) 안에선 computedStyle 비교 금지.** 그 스킬은 동작/에러 검증 전용. 스타일 검증은 사용자 명시 요청 시에만 별도로.
+⚠️ 금지: **자동 검증 스킬(browser-verification) 안에선 computedStyle 비교 금지.** 그 스킬은 동작/에러 검증 전용.
 
 ## 디버깅 (console / network / state)
 
