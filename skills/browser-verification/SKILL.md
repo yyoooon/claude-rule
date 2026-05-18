@@ -171,7 +171,11 @@ agent-browser --cdp 9223 tab list 2>&1
 - **매칭 탭 있지만 사용자가 다른 탭으로 navigate했을 가능성** → tab switch 후 location.pathname 검증 (Step 3 eval 안에서)
 - ⚠️ **유사 URL 다른 탭으로 자동 switch 금지**: 예) expected가 `/record`인데 `/tracker/heartrate` 탭에 같은 컴포넌트가 떠 있더라도, 진입 경로/상태가 다르면 검증 동치 X. expected와 정확히 일치하지 않으면 새 탭 열거나 사용자에게 안내.
 
-### Step 3 — Reload + 검증 (1콜, IIFE)
+### Step 3 — 검증 (1콜, IIFE)
+
+**Reload 필요 여부 먼저 판단:**
+- **생략 (HMR 충분)**: `_components/`, `_lib/`, `_mock/`, `_store/` 변경 → Turbopack HMR이 이미 반영. reload하면 CDP disconnect → 재시도 turn 낭비.
+- **필요**: middleware / SSR / route handler 변경, useEffect 초기 마운트·첫 API fetch 결과 검증.
 
 ```bash
 agent-browser --cdp 9223 tab t<N> >/dev/null
@@ -180,8 +184,9 @@ agent-browser --cdp 9223 eval '
   if (location.pathname !== "<expectedPath>") {
     return { ok: false, reason: "tab navigated away", currentUrl: location.pathname };
   }
-  location.reload();
-  await new Promise(r => setTimeout(r, 1500));
+  // reload 필요한 경우만 아래 두 줄 포함 (HMR 충분하면 생략)
+  // location.reload();
+  // await new Promise(r => setTimeout(r, 1500));
   // 변경 검증 — DOM attribute / textContent 위주 (computed style 비교는 Visual Diff 금지 룰에 걸림)
   // OK: el.getAttribute("fill"), el.textContent, querySelector(".new-class") 존재 여부
   // NOT OK: getComputedStyle(el).color/padding 등 픽셀/색상 픽업
