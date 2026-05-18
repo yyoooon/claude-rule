@@ -505,8 +505,14 @@ mkdir -p "$PROJECT_ROOT/.claude"
 
 모든 보고에 elapsed 시간 포함 (`(Xs)` 형식).
 
+**PASS 보고에는 "체크: …" 한 줄로 무엇을 검증했는지 요약**한다. 사용자가 "AI가 어디까지 확인했는지" 다시 물어보지 않아도 되게 하기 위함. 스킵한 항목(픽셀 일치/라우팅 등)은 굳이 명시 X — 보고는 짧게. SKIP/ESCALATION엔 체크 요약 불필요.
+
 ```
-✅ PASS (1줄)
+✅ PASS (2줄 — 검증 항목 명시)
+"검증 통과 (8.4s) — light path
+ 체크: dropdown 9개 라벨/태그 / 토큰 (bg-blue-weak, text-primary) / console 에러"
+
+✅ PASS (1줄 — 단일 항목일 때)
 "검증 통과 (8.4s): /onboarding 진입 + GUID 입력 → /home 라우팅 정상"
 
 🔧 PASS after fix (2줄)
