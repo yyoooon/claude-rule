@@ -85,6 +85,32 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 - 메인 컨텍스트 오염 최소화를 위해 eval 결과는 짧은 JSON만 (50줄 이내)
 - 실패 시 즉시 사용자 보고 (자동 fix loop 들어가지 않음 — light path는 빠른 sanity check)
 
+### Light Path Tool Turn 압축 (필수)
+
+**LLM thinking turn(3–5초)이 진짜 병목.** Light path도 step을 별도 Bash 호출로 쪼개면 각 사이에 thinking turn이 끼어 40초+ 걸린다.
+
+**원칙: Step 2-4를 1–2개 Bash 호출에 chaining으로 묶는다.**
+
+```bash
+# 권장 패턴 (Bash 1콜 = LLM 1 turn)
+agent-browser --cdp 9223 tab list 2>&1 | head -5 && \
+agent-browser --cdp 9223 tab t<N> >/dev/null && \
+sleep 0.5 && \
+agent-browser --cdp 9223 eval '<IIFE>' && \
+agent-browser --cdp 9223 console --json 2>&1 | python3 -c \
+  "import json,sys; d=json.load(sys.stdin); errs=[m for m in d['data']['messages'] if m['type']=='error']; print(f'errors:{len(errs)}'); print(errs[0]['text'][:200] if errs else '')"
+```
+
+- tab list 결과를 인간 눈으로 확인할 필요 없으면 head로 잘라서 같은 turn에 즉시 다음 호출
+- console error는 **count + 첫 메시지 1줄**을 1콜에 뽑음 (두 번 호출 X)
+- `sleep 0.5` 또는 `sleep 1`을 reload 전후에 넣어 race 방지 (재시도 turn 자체를 없앰)
+- 결과 받고 PASS면 sentinel 기록 1콜 추가 → 총 2 turn 이내 완료 (10초 이하 가능)
+
+**안티패턴 (40초+ 걸리는 케이스)**:
+- step별 분리 호출: tab list → (thinking) → tab switch → (thinking) → eval → (thinking) → console → (thinking) → ...
+- console error 갯수 → (thinking) → error 내용 봤어야 → 추가 호출
+- reload 후 짧은 sleep 없이 즉시 eval → CDP error → 재시도 turn
+
 ### Full Path 진입 조건
 
 - Tier 알고리즘이 full 판정
