@@ -139,6 +139,7 @@ agent-browser --cdp 9223 console --json 2>&1 | python3 -c \
 - step별 분리 호출: tab list → (thinking) → tab switch → (thinking) → eval → (thinking) → console → (thinking) → ...
 - console error 갯수 → (thinking) → error 내용 봤어야 → 추가 호출
 - reload 후 짧은 sleep 없이 즉시 eval → CDP error → 재시도 turn
+- HMR 반영된 page-scoped 변경에도 무조건 reload → CDP disconnect → 재시도 turn 낭비
 
 ### Full Path 진입 조건
 
