@@ -452,3 +452,4 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | **자체 브라우저 spawn** | `--cdp` 없이 `agent-browser open ...` 호출 → 별도 Chrome 띄움 | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것 (절대 자체 spawn 금지). |
 | 자동 수정 폭주 | 한 번 실패 후 계속 수정 시도 | 최대 2회. 누적 50줄 추가 시 즉시 에스컬레이션. |
 | Sentinel 누락 | 검증 후 hash 기록 안 함 → 다음 Stop에서 또 발화 | PASS/SKIP/인프라 에러 시 반드시 sentinel 기록. |
+| **open으로 엉뚱한 탭 오염** | `tab list` 확인 없이 `open <url>` 날림 → 현재 활성 탭(다른 포트/라우트)이 URL 변경됨 | 항상 `tab list` 먼저 → 목적 탭 `tab t<N>` switch → 그 탭 안에서 `eval "location.href=..."` 로 navigate. `open`은 매칭 탭이 아예 없을 때만. |
