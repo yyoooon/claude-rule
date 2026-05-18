@@ -43,7 +43,36 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 
 이 시그널을 받으면:
 1. 이번 턴에 사용자가 코드를 수정하지 않았다면 (예: 메모리 조회, 문서 작성만) → 즉시 sentinel 기록 후 종료 (Sentinel Management 섹션 참고). hook의 spurious trigger 흡수용.
-2. 그렇지 않으면 아래 "Verification Tier Selection"으로 tier 판정 → Light Path 또는 Full Path 진입.
+2. 아래 "Wiring-Only Skip Gate" 통과 시 → 즉시 sentinel 기록 + 종료.
+3. 그렇지 않으면 아래 "Verification Tier Selection"으로 tier 판정 → Light Path 또는 Full Path 진입.
+
+## Wiring-Only Skip Gate
+
+검증 비용보다 "사용자가 dev 서버에서 직접 확인하는 비용"이 더 싼 trivial 변경을 걸러낸다. **다음 세 조건을 모두 만족하면 즉시 SKIP** (sentinel 기록 + 1줄 보고 + 종료):
+
+1. 변경이 **wiring 단순** — signature 변경 없는 prop 추가/교체, 문자열 상수 수정, className/variant 값 교체. 새 로직/조건부 렌더/새 mount 없음.
+2. **동일 패턴이 같은 코드베이스 다른 곳에서 이미 동작 중** — 예: record 페이지에서 검증된 `onClick={() => router.push(...)}` 패턴을 home에도 동일 적용. 코드베이스에 처음 등장하는 패턴이면 skip 안 함.
+3. **잘못되면 사용자가 1클릭으로 즉시 catch 가능** — UI에 노출된 인터랙션이라 dev 서버 보면서 0.5초에 확인 가능.
+
+### SKIP 예시 (이런 변경은 검증 X)
+
+- 기존 컴포넌트에 `onClick` prop 추가 (컴포넌트는 이미 onClick 지원하고, 같은 prop이 다른 페이지에서 동작 검증됨)
+- 라우트 경로 문자열 오타 수정 (`/heart-rate` → `/heartrate`)
+- `variant="default"` → `variant="ghost"` 같은 prop 값 교체
+- Tailwind class 문자열 교체 (`bg-gray-100` → `bg-gray-200`)
+
+### SKIP 안 함 (Tier Selection으로 진행)
+
+- 핸들러 내부 로직 변경 (toast, mutation, 상태 전환)
+- 새 컴포넌트 mount / 조건부 렌더 (`{cond && <X />}`) 추가
+- 같은 패턴이 코드베이스에 처음 등장 (검증된 레퍼런스 없음)
+- 사용자가 보지 않는 페이지/상태에서만 발동하는 변경
+
+### 보고 형식
+
+```
+⏭️ SKIP (1.5s) — wiring-only (onClick prop 추가, record 페이지에서 동일 패턴 동작 중)
+```
 
 ## Verification Tier Selection
 
