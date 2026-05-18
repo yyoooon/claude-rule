@@ -342,6 +342,51 @@ network_errors: []
 | Auth 필요 + 토큰 없음 | SKIP + reason → 사용자 노티. |
 | Diff 너무 큼 (대규모 리팩터) | SKIP + reason "manual review recommended" → 사용자 안내. |
 
+## Elapsed Time Measurement (Level 2)
+
+매 검증 사이클의 wall-clock 시간을 측정해서 결과 보고에 포함한다. 추정 대신 실측. 이번 사이클이 5초였는지 40초였는지 사용자가 즉시 알 수 있고, 누적되면 스킬 개선 베이스라인이 자동으로 쌓인다.
+
+### 측정 패턴
+
+검증 사이클 진입 시 (Tier Selection 직후) 시작 시각을 stash하고, sentinel 기록 직전에 종료 시각과의 차이를 계산한다.
+
+```bash
+# 진입 시
+T0=$(date +%s%3N)
+
+# ... 모든 agent-browser 호출, eval, console 체크 등 ...
+
+# 종료 시 (sentinel 기록과 함께 같은 turn에)
+T1=$(date +%s%3N); ELAPSED_MS=$((T1-T0))
+{ git diff HEAD; ...; } | sha256sum | awk '{print $1}' > .claude/.last-verified-hash
+echo "${ELAPSED_MS}" > .claude/.verify-elapsed-ms
+```
+
+- `.verify-elapsed-ms`는 매 사이클 덮어씌움. 누적 트렌드 추적 원하면 `>>` 로 append + timestamp 같이 기록
+- Light path와 Full path 모두 같은 패턴 적용
+
+### 보고 형식
+
+사용자 보고 1줄에 elapsed 포함:
+
+```
+✅ PASS (8.4s) — light path
+🔧 PASS after fix (52s) — full path, 1 fix
+⏭️ SKIP (1.2s)
+```
+
+자릿수는 초 단위 소수점 1자리 (`$(echo "scale=1; $ELAPSED_MS/1000" | bc)s`).
+
+### 기대 baseline
+
+| 경로 | 목표 | red flag |
+|---|---|---|
+| Light | < 15s | 20s+ → step 압축 누락 의심 |
+| Full (no fix) | < 60s | 90s+ → Brief에서 step 분리 호출 의심 |
+| Full (1 fix loop) | < 120s | 180s+ → systematic-debugging 호출 자체 시간 점검 |
+
+베이스라인을 자주 초과하면 스킬 본문 재점검 신호.
+
 ## Proactive Status Communication
 
 검증 사이클이 길어질 수 있거나 이슈를 발견했을 때, **메인 Claude는 한 줄 알림을 띄워 사용자가 답답하지 않게 한다.** 사용자는 자기 작업 중이라 "지금 뭐 하는지" 모르면 불안.
