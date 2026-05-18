@@ -518,3 +518,4 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | 자동 수정 폭주 | 한 번 실패 후 계속 수정 시도 | 최대 2회. 누적 50줄 추가 시 즉시 에스컬레이션. |
 | Sentinel 누락 | 검증 후 hash 기록 안 함 → 다음 Stop에서 또 발화 | PASS/SKIP/인프라 에러 시 반드시 sentinel 기록. |
 | **open으로 엉뚱한 탭 오염** | `tab list` 확인 없이 `open <url>` 날림 → 현재 활성 탭(다른 포트/라우트)이 URL 변경됨 | 항상 `tab list` 먼저 → 목적 탭 `tab t<N>` switch → 그 탭 안에서 `eval "location.href=..."` 로 navigate. `open`은 매칭 탭이 아예 없을 때만. |
+| **`&&` 체인에서 탭 컨텍스트 소실** | `tab t<N> >/dev/null && eval "..."` 처럼 `&&`로 묶으면 eval이 이전 switch 컨텍스트를 잃고 활성 탭(다른 탭)에서 실행됨 | `tab t<N>` 과 이후 `eval`은 **별도 Bash tool call** 2개로 분리. 같은 `&&` 체인에 묶지 말 것. |
