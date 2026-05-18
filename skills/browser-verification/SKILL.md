@@ -387,6 +387,24 @@ echo "${ELAPSED_MS}" > .claude/.verify-elapsed-ms
 
 베이스라인을 자주 초과하면 스킬 본문 재점검 신호.
 
+### Baseline 초과 시 자동 알림 (필수)
+
+elapsed가 위 표의 red flag 기준을 초과하면, **PASS 보고 다음 줄에 의심 원인을 자동으로 1줄 덧붙인다.** 사용자가 매번 시간 표시를 신경 쓰지 않아도 됨.
+
+판정 로직:
+- Light path elapsed > 20s → `⚠️ baseline(15s) 초과 — step 압축 누락 또는 reload race 의심`
+- Full path (no fix) elapsed > 90s → `⚠️ baseline(60s) 초과 — Brief에서 step 분리 호출 의심`
+- Full path (1 fix loop) elapsed > 180s → `⚠️ baseline(120s) 초과 — fix loop 자체 점검 필요`
+
+예시:
+```
+✅ PASS (38s) — light path
+⚠️ baseline(15s) 초과 — step 압축 누락 또는 reload race 의심. 다음 사이클 chaining 강화 검토.
+```
+
+- baseline 안쪽이면 알림 생략 (정상이니까 침묵)
+- 자동 수정은 X. 시그널만 줌. 사용자가 "그럼 스킬 손봐줘" 판단해야 함
+
 ## Proactive Status Communication
 
 검증 사이클이 길어질 수 있거나 이슈를 발견했을 때, **메인 Claude는 한 줄 알림을 띄워 사용자가 답답하지 않게 한다.** 사용자는 자기 작업 중이라 "지금 뭐 하는지" 모르면 불안.
