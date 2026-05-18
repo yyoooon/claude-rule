@@ -505,12 +505,26 @@ mkdir -p "$PROJECT_ROOT/.claude"
 
 모든 보고에 elapsed 시간 포함 (`(Xs)` 형식).
 
-**PASS 보고에는 "체크: …" 한 줄로 무엇을 검증했는지 요약**한다. 사용자가 "AI가 어디까지 확인했는지" 다시 물어보지 않아도 되게 하기 위함. 스킵한 항목(픽셀 일치/라우팅 등)은 굳이 명시 X — 보고는 짧게. SKIP/ESCALATION엔 체크 요약 불필요.
+**PASS 보고에는 "체크: …"로 무엇을 검증했는지 요약**한다. 사용자가 "AI가 어디까지 확인했는지" 다시 물어보지 않아도 되게 하기 위함. 스킵한 항목(픽셀 일치/라우팅 등)은 굳이 명시 X — 보고는 짧게. SKIP/ESCALATION엔 체크 요약 불필요.
+
+**길이 룰:**
+- 항목 3개 이내 → 한 줄에 ` / `로 구분
+- 4개 이상 또는 80자 초과 → bullet 목록으로 줄바꿈 (최대 5개)
+- 같은 카테고리 항목은 묶기 (예: `라벨/태그 9개`, `토큰 2개(bg-blue-weak, text-primary)`)
 
 ```
-✅ PASS (2줄 — 검증 항목 명시)
+✅ PASS (한 줄 — 항목 3개 이내)
 "검증 통과 (8.4s) — light path
- 체크: dropdown 9개 라벨/태그 / 토큰 (bg-blue-weak, text-primary) / console 에러"
+ 체크: dropdown 라벨/태그 9개 / 토큰 (bg-blue-weak, text-primary) / console 에러"
+
+✅ PASS (bullet — 4개 이상)
+"검증 통과 (12.1s) — light path
+ 체크:
+ - 라벨/태그 9개
+ - 토큰: bg-blue-weak, text-primary, rounded-full
+ - dropdown open/close 동작
+ - active 상태 강조
+ - console 에러"
 
 ✅ PASS (1줄 — 단일 항목일 때)
 "검증 통과 (8.4s): /onboarding 진입 + GUID 입력 → /home 라우팅 정상"
