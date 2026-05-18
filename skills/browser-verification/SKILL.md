@@ -438,16 +438,18 @@ mkdir -p "$PROJECT_ROOT/.claude"
 
 ## 사용자 보고 톤 (메모리 "결과만 짧게 보고" 룰)
 
+모든 보고에 elapsed 시간 포함 (`(Xs)` 형식).
+
 ```
 ✅ PASS (1줄)
-"검증 통과: /onboarding 진입 + GUID 입력 → /home 라우팅 정상"
+"검증 통과 (8.4s): /onboarding 진입 + GUID 입력 → /home 라우팅 정상"
 
 🔧 PASS after fix (2줄)
-"검증 1차 실패 → 수정 후 통과
+"검증 1차 실패 → 수정 후 통과 (52s)
  수정: handleSubmit에서 saveToken 누락 → 추가"
 
 ⏭️ SKIP
-"검증 스킵: 변수 리네임 + 타입 추가만 (비동작 변경)"
+"검증 스킵 (1.2s): 변수 리네임 + 타입 추가만 (비동작 변경)"
 
 ❌ ESCALATION
 "검증 실패. 2회 시도 후 막혔습니다.
