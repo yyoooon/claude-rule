@@ -17,7 +17,7 @@ EPHEMERAL_PATTERN='\.(log|pid)$|^\.env(\.|$)|^\.DS_Store$'
 {
   git -C "$PROJECT_ROOT" diff HEAD
   cd "$PROJECT_ROOT" && git ls-files --others --exclude-standard \
-    | grep -vE "$EPHEMERAL_PATTERN" \
+    | { grep -vE "$EPHEMERAL_PATTERN" || true; } \
     | sort | while IFS= read -r uf; do
     [[ -z "$uf" ]] && continue
     echo "===UNTRACKED: $uf"
