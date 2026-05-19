@@ -13,12 +13,13 @@ UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 
 2. **명시적 요청** — 사용자가 검증을 직접 요청
 
 **커버 범위 (agent-browser 스킬의 8-카테고리 기준):**
-- ✅ 카테고리 2 (단일 액션) — Light path 본진
-- ✅ 카테고리 3 (멀티스텝) — Full path 본진
-- ✅ 카테고리 4 (콘솔/네트워크) — 항상 같이 체크
-- ❌ 카테고리 1 (시각/스타일) — auto-verify는 비교 기준(git diff)이 없어 제외 → agent-browser 수동 사용
+- ✅ **2/3/4** — 기본. console/network는 항상 포함
+- ✅ **1-a/1-b** — diff에 시각/토큰 변경이 있을 때 조건부 추가 (아래 Category Selection 참고)
+- ❌ 픽셀 단위 일치 판정 — 본 스킬 영역 밖
 
-**픽셀 단위 일치 판정은 하지 않음.** 토큰/클래스 적용 여부(아래 Token Application Check)만 확인.
+**두 직교 축으로 검증을 결정:**
+- **Tier** (Light/Full): 얼마나 비싸게 — 메인 직접 vs 서브에이전트
+- **Category** (1-a/1-b/2/3/4): 무엇을 — diff 패턴으로 set 산출
 
 **뷰포트 변경 금지.** 사용자가 띄운 Chrome 탭 크기 그대로 사용. `agent-browser viewport` 호출 X.
 
