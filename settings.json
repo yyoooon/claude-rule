@@ -10,7 +10,6 @@
     ],
     "defaultMode": "dontAsk"
   },
-  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {

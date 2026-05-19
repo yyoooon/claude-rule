@@ -120,7 +120,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Framework:** Next.js App Router 또는 동급 React 프레임워크(Remix/Vite + React Router 등) / TypeScript.
 - **Styling:** Tailwind CSS. 여백·간격은 기본 4px 배수(`p-4`, `gap-6`). 디자인이 명시적으로 다른 그리드(8px·10px 단위 등)를 요구하면 그쪽이 우선.
 - **UI Library:** `shadcn/ui` + `Radix UI` 베이스. Dialog/Select/DatePicker 등 a11y가 까다로운 요소는 직접 구현하지 말고 shadcn에서 가져와서 스타일만 입힐 것 (바퀴 재발명 금지).
-- **Icons:** `lucide-react`. Figma의 SVG/Vector 데이터는 무시하고 라이브러리 아이콘으로 대체.
 - **CDD (Component-Driven Development):** 페이지 한 번에 짜지 말고 작은 요소부터 Bottom-Up으로 조립. 같은 페이지 내 이미 만들어진 복합 컴포넌트(`<UserCard>`, `<ProductList>` 등) 먼저 탐색 후 조립.
 
 **Why:** 매번 같은 컨벤션을 재설명하지 않으려고 한 곳에 박음. 4px 배수/shadcn 베이스는 디자인-코드 간 마찰을 줄이는 안전한 디폴트지 절대 규칙이 아님 — 디자인이 명시적으로 다르게 요구하면 그쪽이 우선.
