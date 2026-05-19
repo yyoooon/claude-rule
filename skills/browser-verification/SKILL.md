@@ -221,6 +221,14 @@ diff: src/app/record/_components/WeightForm.tsx + src/styles/tokens.css
 
 ### Step 1 — Expected URL 결정
 
+**PORT 결정 (먼저):**
+```bash
+PORT=$(grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1)
+[ -z "$PORT" ] && PORT=$(lsof -i -P -n 2>/dev/null | grep LISTEN | grep node | head -1 | grep -oE ':\d+' | tr -d ':')
+[ -z "$PORT" ] && PORT=3000
+```
+워크트리마다 포트가 다를 수 있으므로 `.env.local` 우선 확인.
+
 변경된 파일 경로에서 expected URL을 추론한다:
 - `src/app/(home)/...` → `/`
 - `src/app/record/...` → `/record`
