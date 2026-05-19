@@ -239,7 +239,7 @@ agent-browser --cdp 9223 tab list 2>&1
 
 ### Step 3 — 검증 (1콜, IIFE)
 
-**먼저 Category Selection으로 cat set 결정.** IIFE 본문은 set에 따라 조립 (1-b inspect / 2 click / 3 다단계 trace 등). cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read 추가.
+**먼저 Category Selection으로 cat set 결정.** IIFE 본문 조립은 `agent-browser` 스킬의 "다중 카테고리 합치기" 그대로. cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read 추가.
 
 **Reload 필요 여부 판단:**
 - **생략 (HMR 충분)**: `_components/`, `_lib/`, `_mock/`, `_store/` 변경 → Turbopack HMR이 이미 반영. reload하면 CDP disconnect → 재시도 turn 낭비.
