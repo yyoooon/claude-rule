@@ -322,6 +322,66 @@ agent-browser --cdp 9223 eval '
 
 ---
 
+## 다중 카테고리 합치기 (효율 실행)
+
+여러 카테고리가 동시에 필요할 때 콜 수 최소화 패턴. CSS + 폼 + API가 한 PR에 같이 들어와도 1콜+2콜+(선택)1콜로 끝.
+
+### A/B/C 그룹
+
+| 그룹 | 카테고리 | 실행 방식 |
+|---|---|---|
+| **A. Eval IIFE 1콜** | 1-b, 2, 3 | DOM-side 전부 한 IIFE에 묶음 |
+| **B. 사이드 CLI** | 4 | `console --json` + `network requests --json` 2콜 (싸다) |
+| **C. 별도 콜 + Read** | 1-a | 스크린샷 + 이미지 Read (이미지 토큰 비용) |
+
+→ **5개 카테고리 다 켜져도 IIFE 1콜 + console/network 2콜 + (선택)스크린샷 1콜 = 5-10초 종료.**
+
+### IIFE 본문 조립 규칙 (A 그룹)
+
+cat set에 따라 한 IIFE 안에 묶음:
+- **1-b 포함** → `inspect(sel)` 헬퍼로 computed style + rect 캡처 추가
+- **2 포함** → 단일 element click 시뮬레이션 추가
+- **3 포함** → trace + waitFor + React setter 다단계 시뮬레이션 추가
+
+### 예시 — cat 1-b + 3 + 4 동시 수행
+
+폼 입력 변경 + 토큰 변경 + API 연동 변경이 한 PR에 있을 때:
+
+```js
+(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const traces = [];
+  const trace = (label, extra={}) => traces.push({ step: traces.length+1, label, ...extra });
+
+  // === cat 3: 멀티스텝 ===
+  findBtn("저장").click();
+  trace("clicked 저장");
+  const dialog = await waitFor(() => document.querySelector("[role=dialog]"));
+  if (!dialog) return { ok: false, traces };
+  trace("modal opened");
+  const input = dialog.querySelector("input[inputmode=decimal]");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(input, "60.5");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  trace("input filled");
+
+  // === cat 1-b: 토큰 적용 확인 (같이) ===
+  const card = document.querySelector("[data-slot=card]");
+  const tokenCheck = {
+    hasClass: card.classList.contains("bg-blue-weak"),
+    bg: getComputedStyle(card).backgroundColor,
+    rect: card.getBoundingClientRect().toJSON(),
+  };
+
+  // === cat 4: console/network은 IIFE 끝나고 외부 CLI로 ===
+  return { ok: true, traces, tokenCheck };
+})()
+```
+
+→ 그 다음 외부에서 `console --json` + `network requests --json` 2콜로 cat 4 처리. cat 1-a 필요하면 `screenshot --output /tmp/v.png` 추가로 1콜.
+
+---
+
 ## Element 찾기 패턴
 
 | 케이스 | 패턴 |
