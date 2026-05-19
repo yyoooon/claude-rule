@@ -592,8 +592,13 @@ mkdir -p "$PROJECT_ROOT/.claude"
 "검증 1차 실패 → 수정 후 통과 (52s)
  수정: handleSubmit에서 saveToken 누락 → 추가"
 
-⏭️ SKIP
-"검증 스킵 (1.2s): 변수 리네임 + 타입 추가만 (비동작 변경)"
+⏭️ SKIP (정상 skip — silent)
+사용자 채팅에 출력 없음. 코드 변경 없음 / wiring-only / 자동 흡수 케이스는 sentinel만 조용히 기록.
+
+⏭️ SKIP (인프라 에러 — 보고)
+"검증 스킵: dev 서버 미기동 (`yarn dev` 후 재시도)"
+"검증 스킵: 9223 크롬 미응답 (검증용 크롬 띄워주세요)"
+"검증 스킵: 대규모 리팩터 — 수동 확인 권장"
 
 ❌ ESCALATION
 "검증 실패. 2회 시도 후 막혔습니다.
