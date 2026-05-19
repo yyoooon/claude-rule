@@ -341,11 +341,7 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
 
 5-7. [버퍼 클리어 + 리로드 + 동작 시뮬레이션] — 1개 bash 호출로 묶기
 
-   **먼저 Category Selection (본 스킬 본문 참고)으로 cat set을 산출.** IIFE 본문은 cat set으로 조립:
-   - cat 1-b 있으면 → IIFE 안에 `inspect(sel)` 헬퍼로 computed style/rect 캡처
-   - cat 2 있으면 → 단일 element click 시뮬레이션
-   - cat 3 있으면 → trace + waitFor + React setter로 다단계 시뮬레이션
-   - cat 1-a 있으면 → 같은 체인에 `agent-browser screenshot --output /tmp/v.png` 추가하고 결과에 path 포함
+   **먼저 Category Selection (본 스킬 본문 참고)으로 cat set 산출.** IIFE 조립은 `agent-browser` 스킬의 "다중 카테고리 합치기" 그대로. cat 1-a 포함이면 같은 체인에 `agent-browser screenshot --output /tmp/v.png` 추가.
 
    tool turn 수가 진짜 비용. 다음과 같이 `&&` 체이닝 또는 한 줄로 결합:
 
