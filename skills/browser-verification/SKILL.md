@@ -248,7 +248,9 @@ agent-browser --cdp 9223 tab list 2>&1
 
 ### Step 3 — 검증 (1콜, IIFE)
 
-**Reload 필요 여부 먼저 판단:**
+**먼저 Category Selection으로 cat set 결정.** IIFE 본문은 set에 따라 조립 (1-b inspect / 2 click / 3 다단계 trace 등). cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read 추가.
+
+**Reload 필요 여부 판단:**
 - **생략 (HMR 충분)**: `_components/`, `_lib/`, `_mock/`, `_store/` 변경 → Turbopack HMR이 이미 반영. reload하면 CDP disconnect → 재시도 turn 낭비.
 - **필요**: middleware / SSR / route handler 변경, useEffect 초기 마운트·첫 API fetch 결과 검증.
 - **필요 (cross-route 진입)**: 매칭 탭이 없어 `location.href=...` / `open <url>`로 다른 라우트에서 새로 들어온 경우. SPA navigation은 hydration이 완료되기 전에 eval이 실행되어 `__reactProps$`가 미부착될 수 있음 → `.click()` 등 React 핸들러가 무반응. eval 안에서 `Object.keys(targetEl).some(k=>k.startsWith('__react'))` 가드 + false면 `location.reload(); await sleep(1500)` 후 재query.
