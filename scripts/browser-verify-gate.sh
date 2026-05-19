@@ -32,10 +32,10 @@ if [[ -f "$SENTINEL" ]] && [[ "$(cat "$SENTINEL")" == "$current_hash" ]]; then
   exit 0
 fi
 
-# 3) 변경 파일 화이트리스트 매칭 (tracked diff + untracked)
+# 3) 변경 파일 화이트리스트 매칭 (tracked diff + untracked, ephemerals 제외)
 changed=$({
   git -C "$PROJECT_ROOT" diff --name-only HEAD
-  git -C "$PROJECT_ROOT" ls-files --others --exclude-standard
+  git -C "$PROJECT_ROOT" ls-files --others --exclude-standard | grep -vE "$EPHEMERAL_PATTERN"
 } | sort -u)
 trigger=false
 while IFS= read -r f; do
