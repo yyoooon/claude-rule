@@ -69,9 +69,8 @@ Model:
 [Step 2: Vision으로 구조 파악 → 기존 공통 컴포넌트 재사용해서 조립]
 
 Model:
-"작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해
-브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
-[Step 3: 종료. Playwright visual diff 시도 금지]
+"작업 완료. FooCard 컴포넌트 생성 + 페이지 조립 완료."
+[Step 3: 종료. 픽셀 단위 시안 일치 판정 시도 금지]
 ```
 
 > **Storybook 옵트인 프로젝트:** Step 1-(3)에서 `.tsx` 옆에 `[Name].stories.tsx`를 같이 생성하고, `parameters.design.url`에 Figma 링크를 임베딩한다. 옵트인은 프로젝트 CLAUDE.md에 명시되어 있어야 한다 (Overview 참고).
