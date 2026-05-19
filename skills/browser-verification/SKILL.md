@@ -583,7 +583,7 @@ mkdir -p "$PROJECT_ROOT/.claude"
 
 | 실수 | 발생 패턴 | 방지 |
 |---|---|---|
-| CSS 속성 비교 (Visual Diff) | `computedStyle`을 뽑아 패딩/색상을 Figma와 일치하는지 비교 | AI는 시각 검증에 취약. 동작과 에러 검증에만 집중. |
+| 픽셀/시안 일치 판정 | `computedStyle`을 뽑아 padding/color를 Figma와 px 단위 일치 비교 | auto-verify는 동작/에러만. 시각 디버깅은 agent-browser 카테고리 1 수동 사용. |
 | **뷰포트 변경** | `agent-browser viewport ...` 호출해서 사용자가 띄운 창 크기를 멋대로 바꿈 | 절대 viewport 호출 금지. 사용자가 띄운 탭 크기 그대로 사용. |
 | 메인 컨텍스트 오염 | Full Path에서 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | Full path는 항상 서브에이전트로 dispatch. Light path는 메인 직접 OK 단, eval 결과를 50줄 이내로 압축. |
 | **잘못된 탭 캡처** | 사용자가 검증 중에 다른 페이지로 navigate한 사이에 우리는 t<N>으로 잘못된 화면 캡처 | tab switch 후 항상 eval 안에서 `location.pathname`을 expected와 재검증. mismatch면 즉시 사용자 안내 + 종료 (자동 navigate 강제 X — 사용자 작업 흐름 침범). |
