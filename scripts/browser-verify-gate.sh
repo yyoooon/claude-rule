@@ -10,11 +10,15 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 SENTINEL_DIR="$PROJECT_ROOT/.claude"
 SENTINEL="$SENTINEL_DIR/.last-verified-hash"
 
-# 1) 현재 diff 해시 계산 (tracked diff + untracked file contents)
+# Ephemeral file pattern — dev server logs, PID files, env vars, OS junk
+EPHEMERAL_PATTERN='\.(log|pid)$|^\.env(\.|$)|^\.DS_Store$'
+
+# 1) 현재 diff 해시 계산 (tracked diff + untracked file contents, ephemerals 제외)
 {
   git -C "$PROJECT_ROOT" diff HEAD
-  # Untracked files: list + their contents, deterministic order
-  cd "$PROJECT_ROOT" && git ls-files --others --exclude-standard | sort | while IFS= read -r uf; do
+  cd "$PROJECT_ROOT" && git ls-files --others --exclude-standard \
+    | grep -vE "$EPHEMERAL_PATTERN" \
+    | sort | while IFS= read -r uf; do
     [[ -z "$uf" ]] && continue
     echo "===UNTRACKED: $uf"
     cat "$uf" 2>/dev/null || true
