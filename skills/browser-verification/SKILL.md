@@ -633,14 +633,14 @@ mkdir -p "$PROJECT_ROOT/.claude"
    - PASS → 1줄 보고 + sentinel 기록 → 종료
    - 변경 미반영/console 에러 → 짧게 사유 보고 + sentinel 안 기록 (사용자 수정 유도)
    - light path가 cover 못 하는 변경 발견 → Full Path로 escalate
-5. Full Path: Subagent dispatch (general-purpose) — Brief 템플릿 사용
-6. 서브에이전트 결과 분류:
+6. Full Path: Subagent dispatch (general-purpose) — Brief 템플릿 사용
+7. 서브에이전트 결과 분류:
    - SKIP → 짧게 보고 + sentinel 기록 → 종료
    - PASS → 짧게 보고 + sentinel 기록 → 종료
    - FAIL (인프라 에러) → 사용자 안내 + sentinel 기록 → 종료
    - FAIL (코드 문제) → Fix Loop
-7. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
-8. 최종 결과 보고
+8. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
+9. 최종 결과 보고
 ```
 
 ## Common Mistakes
