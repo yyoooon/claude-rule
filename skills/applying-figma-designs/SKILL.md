@@ -41,11 +41,10 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 2. Step 1에서 생성한(혹은 이미 존재하는) 공통 컴포넌트를 재사용하여 조립한다.
 3. **간격(gap)/여백(padding) 등 거시적 수치가 명시되지 않으면 추측하지 말고 사용자에게 즉시 요청한다.** AI가 임의로 px/gap 값을 채우면 작업 실패로 간주. 사용자가 텍스트로 전달한 명시 수치(예: 좌우 패딩 `px-8`, 간격 `gap-6`)만 사용한다.
 
-### Step 3 — 시각적 검증 위임 (Verification Hand-off)
-코드가 작성되면 다음 메시지를 출력하고 **즉시 종료한다**:
-"작업이 완료되었습니다. 레이아웃과 디자인 디테일 검증을 위해 브라우저에서 PerfectPixel로 시안 스크린샷을 겹쳐서 확인해 주세요."
+### Step 3 — 작업 종료
+코드가 작성되면 짧게 완료 보고 후 **즉시 종료**한다. **픽셀 단위 시안 일치 판정 시도 금지** — 1-2px / 색 hex 미세 비교는 본 스킬 영역 아님.
 
-**종료 후 추가 검증 도구 호출 금지** — Playwright/webview computed-style diff 등 AI 측 시각 비교 시도 일체 금지. 검증은 사용자(인간)에게 위임된 상태이며, 모델 측 후속 작업은 종료된 것으로 간주한다.
+매크로 sanity (큰 그림 깨졌나) 나 토큰 적용 확인이 필요하면 `agent-browser` 스킬 (카테고리 1-a, 1-b) 또는 `browser-verification`의 Token Application Check 사용.
 
 ## Example Flow (Reference)
 
