@@ -44,7 +44,13 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 ### Step 3 — 작업 종료
 코드가 작성되면 짧게 완료 보고 후 **즉시 종료**한다. **픽셀 단위 시안 일치 판정 시도 금지** — 1-2px / 색 hex 미세 비교는 본 스킬 영역 아님.
 
-매크로 sanity (큰 그림 깨졌나) 나 토큰 적용 확인이 필요하면 `agent-browser` 스킬 (카테고리 1-a, 1-b) 또는 `browser-verification`의 Token Application Check 사용.
+**종료 후 흐름 (자동):**
+- Stop hook이 `browser-verification` 자동 발동
+- Category Selection이 diff에 token/CSS 변경 감지 → cat 1-a(스크린샷) + cat 1-b(token check) 자동 활성화
+- 매크로 sanity / 토큰 적용 확인이 자동 실행됨
+
+**추가 수동 디버깅 필요 시:**
+- "왜 좁아 보이지?" 같은 의문 → `agent-browser` cat 1-b 직접 호출 (computed style + rect 핀포인트)
 
 ## Example Flow (Reference)
 
