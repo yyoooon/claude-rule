@@ -627,8 +627,9 @@ mkdir -p "$PROJECT_ROOT/.claude"
 ```
 1. [Auto] Stop hook에서 [auto-verify] 시그널 감지 OR [Manual] 사용자 요청
 2. 이번 턴에 코드 변경 없으면 sentinel만 기록하고 종료
-3. Verification Tier Selection — diff 패턴으로 light/full 분기
-4. Light Path: 메인 직접 (tab list / reload+eval / console) — 5–10초
+3. **Tier Selection** — diff 크기/범위로 light/full 분기 (얼마나)
+4. **Category Selection** — diff 패턴으로 cat set 산출 (무엇을). A 그룹은 IIFE 1콜에 합침, 1-a는 조건부 스크린샷
+5. Light Path: 메인 직접 (tab list / reload+eval / console / [선택]스크린샷) — 5–10초
    - PASS → 1줄 보고 + sentinel 기록 → 종료
    - 변경 미반영/console 에러 → 짧게 사유 보고 + sentinel 안 기록 (사용자 수정 유도)
    - light path가 cover 못 하는 변경 발견 → Full Path로 escalate
