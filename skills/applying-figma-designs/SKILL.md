@@ -95,3 +95,4 @@ Model:
 | 레이아웃 수치를 임의로 추측 | 스크린샷/명시 수치 없으면 사용자에게 padding/gap 즉시 요청 (Step 2-3) |
 | 픽셀 단위 시안 일치 판정 시도 | 1-2px / 색 hex 미세 비교는 본 스킬 영역 밖. Step 3에서 종료. |
 | 프로젝트 옵트인 없이 `.stories.tsx` 생성 | 글로벌 기본값은 OFF. 프로젝트 CLAUDE.md에 명시 옵트인이 있는 경우에만 생성 |
+| **Figma 스펙의 opacity를 토큰 선택에 미반영** | Figma 스펙에 opacity가 명시된 경우(예: `rgba(42,113,255,0.5)`), 토큰 선택 시 tokens.css에서 동일 opacity를 가진 토큰인지 반드시 확인. 예: `--gradient-ai`(100%) vs `--gradient-ai-2`(50%) — Figma가 50%면 후자 선택. |
