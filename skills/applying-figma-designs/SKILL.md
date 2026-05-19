@@ -16,7 +16,7 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 Token Diet 
 
 이 옵트인이 없으면 글로벌 스킬은 Storybook 관련 동작을 일체 수행하지 않는다 (package.json 체크도 하지 않음).
 
-## The B Protocol (3 Steps)
+## Token Diet Protocol (3 Steps)
 
 ### Step 0 — 입력 분기 (Input Triage, MANDATORY)
 **Step 1 진입 전에 사용자가 전달한 입력이 어떤 형태인지 분기한다.** 자료를 자의적으로 보충하지 말 것.
