@@ -24,7 +24,7 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 Token Diet 
 | 입력 형태 | 다음 단계 |
 |---|---|
 | Figma URL + `node-id=` 파라미터 있음 | **Step 1로 진행** |
-| Figma URL은 있는데 `node-id=` 없음 (= 전체 페이지) | **즉시 중단하고 되묻기**: "전체 페이지 URL이네요. B Protocol은 토큰 폭발 방지를 위해 단일 node-id만 추출합니다. 어떤 컴포넌트/프레임의 node-id를 작업할까요?" |
+| Figma URL은 있는데 `node-id=` 없음 (= 전체 페이지) | **즉시 중단하고 되묻기**: "전체 페이지 URL이네요. Token Diet Protocol은 토큰 폭발 방지를 위해 단일 node-id만 추출합니다. 어떤 컴포넌트/프레임의 node-id를 작업할까요?" |
 | URL 없이 **스크린샷만** 첨부 | **Step 1 건너뛰고 Step 2부터** (Vision 기반 조립). 단, 새 컴포넌트가 필요한 게 명확하면 사용자에게 해당 부분의 Figma node-id를 요청한 뒤 Step 1로. |
 | URL/스크린샷 모두 없음 (텍스트 설명만) | **즉시 중단하고 자료 요청**: Figma node-id 또는 화면 스크린샷 중 최소 하나 필요. |
 
