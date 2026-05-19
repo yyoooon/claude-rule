@@ -38,7 +38,7 @@ UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 
 
 ## When NOT to Use
 
-- **시각적 디자인 검증 (Visual/Pixel-perfect matching):** `computedStyle`로 패딩/색상 추출해서 Figma와 대조하는 행위 (절대 금지. Storybook과 PerfectPixel 영역)
+- **픽셀/시안 일치 판정** — auto-verify는 비교 기준이 없어 부적합 (시각 디버깅은 agent-browser 카테고리 1 수동 사용)
 - 순수 리팩터 (행동 변경 없음) / 타입만 수정 / 주석/포맷만 변경
 
 ## Token Application Check (Pixel Diff와 구별)
