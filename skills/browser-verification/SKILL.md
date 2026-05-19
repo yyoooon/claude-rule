@@ -63,9 +63,11 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 ```
 
 이 시그널을 받으면:
-1. 이번 턴에 사용자가 코드를 수정하지 않았다면 (예: 메모리 조회, 문서 작성만) → 즉시 sentinel 기록 후 종료 (Sentinel Management 섹션 참고). hook의 spurious trigger 흡수용.
-2. 아래 "Wiring-Only Skip Gate" 통과 시 → 즉시 sentinel 기록 + 종료.
+1. 이번 턴에 사용자가 코드를 수정하지 않았다면 (예: 메모리 조회, 문서 작성, WebView 연결만) → **사용자 메시지 출력 없이 silent로** sentinel 기록 후 종료. hook의 spurious trigger 흡수용 — 사용자가 알 필요 없음.
+2. 아래 "Wiring-Only Skip Gate" 통과 시 → **silent로** sentinel 기록 + 종료.
 3. 그렇지 않으면 아래 "Verification Tier Selection"으로 tier 판정 → Light Path 또는 Full Path 진입.
+
+**Silent SKIP 규칙:** 코드 변경 없음 / wiring-only 케이스는 사용자 채팅에 메시지 출력 X. Bash 호출도 `>/dev/null 2>&1`로 출력 숨김. sentinel 파일만 조용히 업데이트.
 
 ## Wiring-Only Skip Gate
 
