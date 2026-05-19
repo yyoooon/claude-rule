@@ -41,17 +41,17 @@ UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 
 - **픽셀/시안 일치 판정** — auto-verify는 비교 기준이 없어 부적합 (시각 디버깅은 agent-browser 카테고리 1 수동 사용)
 - 순수 리팩터 (행동 변경 없음) / 타입만 수정 / 주석/포맷만 변경
 
-## Token Application Check (Pixel Diff와 구별)
+## Token Application Check (구조적 매칭, 시각 X)
 
-디자인 토큰 매핑이 실제 DOM에 박혔는지는 **확인 OK**. 토큰 텍스트 비교는 신뢰도 높고 raw hex hardcode 회귀를 잡아낸다. 다만 px 단위 일치는 여전히 금지.
+디자인 토큰 매핑이 실제 DOM에 박혔는지는 **확인 OK**. 시각 비교가 아니라 **classList/computed value 숫자 매칭**이라 신뢰도 100%.
 
 **확인 대상 변경**: Figma 적용 / 새 토큰 도입 / 토큰 스왑. 라우팅·문자열 수정 등 토큰 무관 변경엔 생략.
 
 **방법** (eval IIFE 안에 묶기, 별도 콜 X):
-- 1차: `el.classList.contains('bg-blue-weak')` — Tailwind 클래스가 직접 박혀있을 때 (가장 안전, 텍스트 비교)
-- 2차: `getComputedStyle(el).backgroundColor` 의 rgb/hex와 토큰 값 비교 — 클래스가 동적 조합되어 classList 검사가 불가능할 때만
+- 1차: `el.classList.contains('bg-blue-weak')` — Tailwind 클래스가 직접 박혀있을 때 (가장 안전)
+- 2차: `getComputedStyle(el).backgroundColor` rgb/hex 비교 — 클래스가 동적 조합되어 classList 검사가 불가능할 때만
 
-**금지**: px·gap·padding 수치 비교, 폰트 메트릭 측정 — 0.5~2px 오차로 판정 불안정.
+**금지**: px·gap·padding 수치 비교, 폰트 메트릭 측정 — 0.5~2px 오차로 판정 불안정 (이 영역은 본 스킬 밖).
 
 ## Auto-Invocation Protocol
 
