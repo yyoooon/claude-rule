@@ -51,6 +51,7 @@ UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 
 **방법** (eval IIFE 안에 묶기, 별도 콜 X):
 - 1차: `el.classList.contains('bg-blue-weak')` — Tailwind 클래스가 직접 박혀있을 때 (가장 안전)
 - 2차: `getComputedStyle(el).backgroundColor` rgb/hex 비교 — 클래스가 동적 조합되어 classList 검사가 불가능할 때만
+- **인라인 스타일(`style={{ background: 'var(--x)' }}`) 케이스**: classList 체크 불가. `getComputedStyle(el).background`로 computed 값을 뽑아 Figma 스펙 색상값(rgba)과 비교. applying-figma-designs 작업 후라면 Figma MCP에서 확인한 색상값을 기대값으로 사용.
 
 **금지**: px·gap·padding 수치 비교, 폰트 메트릭 측정 — 0.5~2px 오차로 판정 불안정 (이 영역은 본 스킬 밖).
 
