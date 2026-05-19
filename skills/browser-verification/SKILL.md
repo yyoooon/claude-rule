@@ -627,9 +627,9 @@ mkdir -p "$PROJECT_ROOT/.claude"
    - light path가 cover 못 하는 변경 발견 → Full Path로 escalate
 6. Full Path: Subagent dispatch (general-purpose) — Brief 템플릿 사용
 7. 서브에이전트 결과 분류:
-   - SKIP → 짧게 보고 + sentinel 기록 → 종료
+   - SKIP (정상) → **silent** + sentinel 기록 → 종료
+   - SKIP (인프라 에러) → 짧게 보고 + sentinel 기록 → 종료
    - PASS → 짧게 보고 + sentinel 기록 → 종료
-   - FAIL (인프라 에러) → 사용자 안내 + sentinel 기록 → 종료
    - FAIL (코드 문제) → Fix Loop
 8. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
 9. 최종 결과 보고
