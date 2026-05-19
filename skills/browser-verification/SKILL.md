@@ -168,6 +168,59 @@ agent-browser --cdp 9223 console --json 2>&1 | python3 -c \
 - Light path에서 unexpected 에러 발견 (메인이 fix 가능 범위를 넘어선다고 판단)
 - 사용자가 명시적으로 "꼼꼼히 검증" 요청
 
+## Category Selection — 무엇을 검증할지
+
+Tier와 **직교 축**. diff에서 어떤 카테고리를 검증해야 하는지 set으로 산출.
+
+### diff 패턴 → 카테고리 매핑
+
+| 변경 패턴 (diff에서 탐지) | 추가 카테고리 |
+|---|---|
+| Tailwind className / 색 / `tokens.css` 변경 | **1-a** (스크린샷) + **1-b** (token check) |
+| 새 JSX 요소 mount / 조건부 렌더 추가 | **1-a** (구조 sanity) |
+| 새 `onClick` / 핸들러 함수 | **2** (단일 액션) |
+| 폼/입력/다단계 모달 시퀀스 변경 | **3** (멀티스텝 IIFE) |
+| API/mutation/queries/fetch 변경 | **4** (이미 default) |
+| `useEffect` 초기 mount fetch | **4** + **1-a** (mount sanity) |
+
+**디폴트로 카테고리 4(console/network)는 항상 포함** — 거의 free, silent 버그 잡음.
+
+### 실행 분리 (A/B/C 그룹)
+
+| 그룹 | 카테고리 | 실행 방식 |
+|---|---|---|
+| **A. Eval IIFE 1콜** | 1-b, 2, 3 | DOM-side 전부 한 IIFE에 묶음 |
+| **B. 사이드 CLI** | 4 | `console --json` + `network requests --json` 2콜 (싸다) |
+| **C. 별도 콜 + Read** | 1-a | 스크린샷 + 이미지 Read (이미지 토큰 비용) |
+
+→ **5개 카테고리 다 켜져도 IIFE 1콜 + console/network 2콜 + (선택)스크린샷 1콜 = 5-10초 안에 종료.**
+
+### IIFE 본문 합치는 규칙
+
+cat set에 따라 IIFE를 조립 (별도 호출 X, 한 콜에 다 묶음):
+- **1-b 포함** → `inspect(sel)` 헬퍼로 computed style + rect 같이 캡처
+- **2 포함** → 단일 element click 시뮬레이션 추가
+- **3 포함** → trace + waitFor + React setter로 다단계 시뮬레이션
+- (CLI 디테일은 `agent-browser` 스킬 카테고리 1-b/2/3 참고)
+
+### 산출 예시
+
+```
+diff: src/app/record/_components/WeightForm.tsx + src/styles/tokens.css
+
+탐지:
+  - tokens.css 변경 → cats += {1-a, 1-b}
+  - 새 <form> + setReactValue → cats += {3}
+  - useMutation 호출 → cats += {4}
+
+최종 cats = {1-a, 1-b, 3, 4}
+
+실행:
+  1. IIFE 1콜 (cat 1-b inspect + cat 3 form submit + trace)
+  2. console/network 2콜 (cat 4)
+  3. 스크린샷 1콜 + Read (cat 1-a)
+```
+
 ## Light Path Protocol
 
 메인 Claude가 직접 실행. 서브에이전트 dispatch 안 함.
