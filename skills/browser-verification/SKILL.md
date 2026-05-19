@@ -326,8 +326,17 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    - domain.ts 변경 + 같은 diff에 대응 *.test.ts 수정 + UI 파일(*.tsx) 변경 없음 (TDD 시그널, unit test가 cover)
 
 2. [Dev 서버 URL 확인]
-   lsof -i -P -n | grep LISTEN | grep node
-   또는 :3000 기본값. PORT 확정 후 다음 단계.
+   우선순위대로 PORT 결정:
+   1) 워크트리 로컬: `grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1`
+   2) 프로세스 감지: `lsof -i -P -n | grep LISTEN | grep node | head -1 | grep -oE ':\d+' | tr -d ':'`
+   3) 기본값: 3000
+   
+   ```bash
+   PORT=$(grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1)
+   [ -z "$PORT" ] && PORT=$(lsof -i -P -n 2>/dev/null | grep LISTEN | grep node | head -1 | grep -oE ':\d+' | tr -d ':')
+   [ -z "$PORT" ] && PORT=3000
+   ```
+   PORT 확정 후 다음 단계.
 
 3. [사용자 Chrome (9223) 살아있는지 확인 — 필수]
    curl -s http://127.0.0.1:9223/json/version
