@@ -7,9 +7,9 @@ description: Figma 디자인을 코드로 변환할 때 사용하는 B Protocol 
 
 ## Overview
 
-**부분 노드 추출 → 비전(Vision) 기반 전체 조립 → 시각적 검증 위임**
+**부분 노드 추출 → 비전(Vision) 기반 전체 조립 → 작업 종료**
 
-핵심 원칙: 전체 페이지 링크를 Figma MCP로 절대 읽지 않는다 (컨텍스트 폭발 및 환각 방지). 큰 레이아웃은 스크린샷(Vision)과 사용자의 명시적 수치로 잡고, 디테일한 컴포넌트는 단일 `node-id`로만 추출한다. 시각적 디자인 일치 여부는 AI(Playwright)가 평가하지 않으며, 사용자(인간)의 전용 시각 검증 툴(PerfectPixel 등)에 위임한다.
+핵심 원칙: 전체 페이지 링크를 Figma MCP로 절대 읽지 않는다 (컨텍스트 폭발 및 환각 방지). 큰 레이아웃은 스크린샷(Vision)과 사용자의 명시적 수치로 잡고, 디테일한 컴포넌트는 단일 `node-id`로만 추출한다. **픽셀 단위 시안 일치 판정은 본 스킬 범위 밖** (사용자가 별도 판단).
 
 **Storybook 동시 생성은 글로벌 기본값 OFF.** Storybook이 설치된 프로젝트에 한해 프로젝트 CLAUDE.md에 다음 한 줄로 옵트인:
 > "applying-figma-designs 발화 시, 컴포넌트 파일과 함께 `.stories.tsx`를 동시 생성한다. Figma URL은 `parameters.design.url`에 임베딩한다."
