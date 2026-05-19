@@ -10,6 +10,7 @@
     ],
     "defaultMode": "dontAsk"
   },
+  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -80,6 +81,5 @@
       }
     }
   },
-  "skipDangerousModePermissionPrompt": true,
-  "model": "sonnet"
+  "skipDangerousModePermissionPrompt": true
 }

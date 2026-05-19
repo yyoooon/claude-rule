@@ -3,31 +3,33 @@ name: agent-browser
 description: Use when running agent-browser CLI for desktop Chrome automation, especially multi-step UI flows. Trigger words — "agent-browser로", "9223 크롬으로", "띄워진 크롬으로 …", "기존 크롬에 붙어서", or any case where multi-step browser automation (5+ click/wait) is requested via agent-browser. Skip for: Playwright MCP, webview-test MCP (Android WebView), single screenshot/single click tasks (use raw agent-browser commands).
 ---
 
-# agent-browser (개인 환경)
+# agent-browser (도구 사용 카탈로그)
 
 ## Overview
 
-agent-browser CLI 공식 디폴트는 `open → snapshot -i → click @e1 → snapshot -i → ...` 루프지만, 매 invocation마다 CLI 부팅 비용이 들어 5+ step 누적 시 체감 매우 느림. 이 스킬은 **멀티스텝 시 eval JS 묶음** 패턴과 **CDP attach 함정** 회피를 강제한다.
+agent-browser CLI 사용 기법 모음. **카테고리별로 패턴이 다르니** 작업 시작 전 카테고리부터 선언.
 
-**핵심:** 구조 파악 1-2회 → 나머지는 eval IIFE 1회. `--cdp 9223 + tab tN`으로 탭 명시 필수. React input은 setter+dispatchEvent.
+핵심 원칙:
+- `--cdp 9223 + tab tN`으로 탭 명시 필수
+- 멀티스텝은 eval IIFE 1콜 (CLI 부팅 비용 누적 방지)
+- React input은 setter+dispatchEvent (직접 `.value` 대입은 React가 안 감지)
+- **픽셀 단위 일치 판정은 안 함** (#DC2626 vs #DC2727, 16px vs 17px 같은 미세 비교)
 
-## When to Use
+## 검증 카테고리 (시작 전 선언)
 
-- 사용자가 "agent-browser로" / "9223 크롬으로" / "띄워진 크롬에서" 명시
-- 멀티스텝 시나리오 (5+ click/wait/fill)
-- Playwright MCP가 느려서 대안 찾는 맥락
-- 기존 크롬 인스턴스에 CDP attach (`http://127.0.0.1:9223`)
+| 카테고리 | 목적 | 주 패턴 |
+|---|---|---|
+| **1-a** 시각 sanity | 변경이 화면에 반영됐나 (매크로) | 스크린샷 1장 + Read |
+| **1-b** 렌더 원인 분석 | "왜 이렇게 보이지?" 디버깅 | computed style + rect 덤프 |
+| **2** 단일 액션 | 클릭 → 모달 뜸 같은 1-2 step | find + scoped snapshot |
+| **3** 멀티스텝 ★ | 5+ 단계 시나리오 | eval IIFE 1콜 + trace |
+| **4** 네트워크/콘솔 | API 실패, 빈 데이터, 에러 바운더리 | console + network --json |
 
-## When NOT to Use
+AI가 헷갈리지 않게 **사용자가 카테고리를 선언**하거나 본 스킬이 첫 응답에서 추론 후 명시.
 
-- 단일 스크린샷 / 단일 클릭 → 그냥 `agent-browser open + screenshot` 한 줄
-- 실기기 Android WebView → `webview-test` MCP
-- 회귀 테스트 자산화 → Playwright Test
-- 자동 검증 (Stop hook) → `browser-verification` 스킬
+---
 
-## 디폴트 워크플로우 (멀티스텝)
-
-### 1. CDP attach + 탭 확인 (필수)
+## 시작 전 — CDP attach + 탭 확인 (모든 카테고리 공통)
 
 같은 크롬에 여러 탭 떠있으면 잘못된 탭에 붙는다. 반드시 탭 명시.
 
@@ -36,162 +38,40 @@ agent-browser --cdp 9223 tab list
 # → [t1] Care Home - http://localhost:3002/
 #    [t2] Care Home - http://localhost:3001/
 
-agent-browser --cdp 9223 tab t2   # 원하는 탭으로 활성화
-agent-browser --cdp 9223 eval "location.href"   # 검증
+agent-browser --cdp 9223 tab t2                # 원하는 탭 활성화
+agent-browser --cdp 9223 eval "location.href"  # 검증
 ```
 
-**함정:** `tab 2` (positional integer) X. 반드시 `tab t2` (stable id).
+⚠️ **`tab 2` (positional integer) X**. 반드시 `tab t2` (stable id).
+⚠️ **viewport 변경 금지** — 사용자가 띄운 탭 크기 그대로 사용 (`agent-browser viewport` 호출 금지).
 
-### 2. 구조 파악 (1-2회 eval만)
+---
 
-snapshot-ref 루프 돌리지 말 것. eval 한 번으로 필요한 selector / 버튼 텍스트 / input 타입 한 번에 덤프:
+## 카테고리 1-a — 시각 sanity (스크린샷 1장)
+
+"변경이 의도대로 화면에 반영됐나" 매크로 확인.
 
 ```bash
-agent-browser --cdp 9223 eval '
-(() => {
-  const btns = [...document.querySelectorAll("button, [role=button]")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ text: el.textContent?.trim().slice(0,60), aria: el.getAttribute("aria-label") }));
-  const inputs = [...document.querySelectorAll("input")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ type: el.type, placeholder: el.placeholder, inputmode: el.inputMode, value: el.value }));
-  return { url: location.pathname, btns, inputs };
-})()
-'
+agent-browser --cdp 9223 screenshot --output /tmp/shot.png
+# 이후 Read(/tmp/shot.png)로 멀티모달 해석
 ```
 
-UI가 단계마다 바뀌면 (모달/시트 열고 닫힘), **다음 단계 직전에 한 번 더** 덤프해서 새 selector 파악.
+**용도:** 색 카테고리 바뀜 / 컴포넌트 누락 / 글랜더 깨짐 같은 **큰 그림 sanity**.
+**금지:** 픽셀 단위 일치 판정 (1-2px 차이, 색 hex 미세 비교).
 
-**예외 — dump에서 다음 트리거가 이미 잡혔다면 별도 호출 금지:**
-- 첫 dump 결과에 다음 단계 버튼 텍스트/입력 selector가 이미 보이면, 끊지 말고 **단일 IIFE 안에서 `waitFor` + 클릭**으로 묶을 것.
-- 예: "Record Your Weight" 클릭 → 모달 dump에서 "Log Now" 텍스트 확인 → 별도 eval로 Log Now 클릭 ❌. 처음부터 한 IIFE에 클릭→waitFor(dialog)→Log Now 클릭→waitFor(input)→fill→submit 묶어서 1콜 ✅.
-- "다음 UI는 진짜 모르는" 케이스 (동적 폼, 조건부 분기 등) 한정으로만 중간 dump 허용.
-
-### 3. 전체 플로우는 eval IIFE 1회 (+ 단계별 검증 필수)
-
-구조 파악 끝나면 한 IIFE에 전부 묶어서 1회 호출. 중간 click/wait도 JS 안에서.
-
-**디폴트 — 각 단계마다 `traces` 누적 + 실패 시 DOM dump:**
-- 단계마다 `trace(label, extra)` 호출해서 `{ step, label, url, ... }` 누적
-- 실패 step에서는 그 시점의 `visibleText`, 활성 버튼 목록, console 같이 캡처해서 같이 반환
-- 마지막에 `{ ok, traces }` 통째로 반환 → 내가 받아서 단계별로 통과/실패 확인
-
-```js
-const traces = [];
-const trace = (label, extra={}) => traces.push({
-  step: traces.length + 1, label, url: location.pathname, ...extra
-});
-const dumpDom = () => ({
-  visibleText: document.body.innerText.slice(0, 300),
-  visibleBtns: [...document.querySelectorAll("button, [role=button]")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => el.textContent?.trim().slice(0, 40)).filter(Boolean),
-  errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")]
-    .map(el => el.textContent?.trim().slice(0, 200)),
-});
-
-// step 1
-const action = findBtn("Record Your Weight");
-if (!action) { trace("action card NOT FOUND", dumpDom()); return { ok: false, traces }; }
-action.click();
-trace("clicked action card");
-
-// step 2 — 모달 폴링
-const logNow = await waitFor(() => {
-  const d = document.querySelector("[role=dialog]");
-  return d ? findBtn("Log Now", d) : null;
-});
-if (!logNow) { trace("Log Now WAIT FAILED", dumpDom()); return { ok: false, traces }; }
-logNow.click();
-trace("clicked Log Now", { dialogOpen: !!document.querySelector("[role=dialog]") });
-
-// step 3 — input
-const input = await waitFor(() => /* ... */);
-if (!input) { trace("input WAIT FAILED", dumpDom()); return { ok: false, traces }; }
-trace("input ready", { type: input.type, inputmode: input.inputMode });
-
-// ... 이하 step별 동일 패턴
-
-return { ok: true, traces };
-```
-
-**왜:** "왜 실패했지?" 디버깅을 위해 별도 호출로 다시 dump 뜨러 가지 않게. 한 콜 안에서 발생한 모든 단계의 컨텍스트가 결과에 박혀 있어야 함.
-
+⚙️ **환경 디폴트 박아두면 매번 경로 안 적어도 됨:**
 ```bash
-agent-browser --cdp 9223 eval '
-(async () => {
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const findBtn = txt => [...document.querySelectorAll("button, [role=button]")]
-    .filter(el => el.offsetParent !== null)
-    .find(el => el.textContent?.trim() === txt);
-
-  // step 1
-  const a = findBtn("Cancel");
-  a?.click(); await sleep(800);
-
-  // step 2
-  const b = findBtn("Log Now");
-  b?.click(); await sleep(1200);
-
-  // step 3 — React input fill
-  const input = [...document.querySelectorAll("input")]
-    .find(el => el.inputMode === "decimal");
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-  setter.call(input, "60.5");
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  await sleep(300);
-
-  // step 4
-  findBtn("Confirm")?.click();
-  await sleep(1500);
-
-  return { ok: true, url: location.pathname };
-})()
-'
+export AGENT_BROWSER_SCREENSHOT_DIR=/tmp
+export AGENT_BROWSER_SCREENSHOT_FORMAT=jpeg
+export AGENT_BROWSER_SCREENSHOT_QUALITY=70
 ```
+검증용은 jpeg 70% 충분 — Read 토큰도 작아짐.
 
-## React Input Fill (반드시 setter 통해서)
+---
 
-`input.value = "60"` 직접 대입은 React가 안 감지한다. 항상 prototype setter 통해서 + `input`/`change` 이벤트 dispatch:
+## 카테고리 1-b — 렌더 원인 분석 (computed style + rect)
 
-```js
-const setReactValue = (el, val) => {
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-  setter.call(el, val);
-  el.dispatchEvent(new Event("input", { bubbles: true }));
-  el.dispatchEvent(new Event("change", { bubbles: true }));
-};
-```
-
-## Element 찾기 패턴
-
-| 케이스 | 패턴 |
-|--------|------|
-| 버튼 정확 매칭 | `findBtn(txt)` (위 헬퍼) |
-| 부분 텍스트 매칭 | `el.textContent?.includes(txt)` |
-| visible만 | `.filter(el => el.offsetParent !== null)` |
-| input by type | `inputMode === "decimal"` / `type === "number"` 등 |
-| `role=dialog` 시트 안만 | scope 좁히기 — `document.querySelector("[role=dialog]")` 안에서 검색 |
-
-## 스타일 함정 디버깅 (Figma 적용 후 의문 제기 시)
-
-**1차 검증은 사용자 눈으로** — Figma 시안과 화면을 직접 비교. agent-browser는 **그 검증에서 "왜 좁아 보여" / "왜 더 흐려" 같은 의문이 나왔을 때 원인을 핀포인트로 잡는 디버깅 수단**.
-
-전반 시각 일치 검증 도구 아님. 특정 함정에만 우위.
-
-### 거의 유일 수단인 함정
-
-눈으로 못 잡는 케이스 — 이때만 agent-browser:
-
-| 케이스 | 왜 눈으로 못 잡나 |
-|--------|---------------------|
-| 부모-자식 opacity **곱연산** (50%×50%=25%) | "좀 흐릿한가?" 수준. 원인 추적 X |
-| 중첩 padding **합산** (outer + inner) | "왜 좁지?" 수준. 어디서 좁아진지 X |
-| transform/scale 적용 시 실 사이즈 vs 시각 사이즈 | 사람 눈엔 같이 보임 |
-
-전반 색감/폰트/정렬 의심이면 → agent-browser 말고 코드(Tailwind 클래스) 직접 보는 게 빠름.
-
-### 핀포인트 inspect
+"왜 좁아 보이지?" / "왜 흐릿하지?" 의문을 핀포인트로 잡는 디버깅.
 
 ```bash
 agent-browser --cdp 9223 eval '
@@ -210,7 +90,6 @@ agent-browser --cdp 9223 eval '
       padding: cs.padding,
       gap: cs.gap,
       opacity: cs.opacity,
-      borderRadius: cs.borderRadius,
     };
   };
   return [
@@ -221,27 +100,175 @@ agent-browser --cdp 9223 eval '
 '
 ```
 
-중첩 padding 합산 추적 시는 `cs.paddingLeft` 등 4방향 따로 query.
-`rect.x/y`는 viewport 기준이라 스크롤·디바이스로 변동 → 디폴트 제외.
+**팁:**
+- **부모/자식 같이** 뽑기 (`['.parent', '.child']`) — opacity 곱연산/padding 합산 추적
+- **`getBoundingClientRect` 반드시 포함** — declared padding과 실제 렌더 크기가 다른 경우 흔함 (box-sizing, flex shrink, min-width 충돌)
+- 4방향 따로 봐야 할 땐 `cs.paddingLeft` 등 분리
 
-### 한계 (사용 전 인지)
+**눈으로 못 잡는 케이스 (이때만 유용):**
 
-- **색상 단위 불일치** — `cs.color`는 `rgb(255,255,255)` 반환. Figma hex와 직접 비교 X → 변환 후 대조.
-- **shorthand 문자열** — `padding`/`gap`은 합쳐서 나옴. 방향별 비교 필요하면 각 방향 따로 query.
-- **CSS 변수 resolved** — `var(--space-4)` → `"16px"`로만 보임. "토큰 이름 일치"는 못 보고 "최종 픽셀 일치"만 확인.
+| 케이스 | 왜 눈으로 못 잡나 |
+|---|---|
+| 부모-자식 opacity 곱연산 (50%×50%=25%) | "좀 흐릿한가?" 수준 |
+| 중첩 padding 합산 (outer + inner) | "어디서 좁아진지" 불명 |
+| transform/scale 적용 시 실 사이즈 vs 시각 사이즈 | 사람 눈엔 같이 보임 |
 
-⚠️ 금지: **자동 검증 스킬(browser-verification) 안에선 computedStyle 비교 금지.** 그 스킬은 동작/에러 검증 전용.
+**도구 한계:**
+- `cs.color`는 `rgb(...)` 반환 — hex 비교 시 변환 필요
+- `padding`/`gap`는 shorthand — 방향별 비교 시 각자 query
+- CSS 변수는 resolved 값으로만 — 토큰 이름 일치는 못 봄
 
-## 디버깅 (console / network / state)
+---
 
-agent-browser는 네이티브 console/network 캡처 지원. 디버깅 일상에 적합.
+## 카테고리 2 — 단일 액션 (find + scoped snapshot)
+
+"버튼 누르면 모달 뜨나" 같은 1-2 step.
+
+```bash
+# find 액션으로 snapshot 생략 — 2콜 → 1콜
+agent-browser --cdp 9223 find text "Log Now" click
+agent-browser --cdp 9223 find role button --name "Confirm" click
+
+# 스코프 제한 snapshot — 시트 안만
+agent-browser --cdp 9223 snapshot -i -c -d 2 -s "[role=dialog]"
+agent-browser --cdp 9223 snapshot -i -c -d 2 -s "main, [role=main]"
+```
+
+**대기는 내장 waitFor 활용** — 커스텀 `setTimeout` 폴링 짜지 말 것:
+```bash
+agent-browser --cdp 9223 wait --selector "[role=dialog]"
+```
+
+IIFE 안에서 폴링 직접 짜야 하는 경우는 카테고리 3 참고.
+
+---
+
+## 카테고리 3 — 멀티스텝 IIFE (★ 가장 중요)
+
+5+ 단계 시나리오. **CLI 부팅 비용 누적 방지가 핵심.**
+
+### 패턴
+
+1. **1-2회 eval로 구조 파악** — 폼/버튼 selector 덤프
+2. **전체 플로우 IIFE** — 클릭/대기/입력을 JS 한 덩어리로 브라우저에 주입
+
+### 구조 파악 dump
+
+```bash
+agent-browser --cdp 9223 eval '
+(() => {
+  const btns = [...document.querySelectorAll("button, [role=button]")]
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ text: el.textContent?.trim().slice(0,60), aria: el.getAttribute("aria-label") }));
+  const inputs = [...document.querySelectorAll("input")]
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ type: el.type, placeholder: el.placeholder, inputmode: el.inputMode, value: el.value }));
+  return { url: location.pathname, btns, inputs };
+})()
+'
+```
+
+**dump에서 다음 트리거 이미 잡혔다면 별도 호출 금지** — 첫 dump에 다음 단계 selector가 보이면 한 IIFE에 묶어버릴 것. 별도 eval로 끊으면 사용자 화면에 "모달 뜬 채 멈춤" 노출됨.
+
+"다음 UI는 진짜 모르는" 케이스 (동적 폼, 조건부 분기) 한정으로만 중간 dump 허용.
+
+### 전체 플로우 IIFE — trace + 실패 시 dumpDom
+
+각 단계마다 trace 누적, 실패 시 DOM dump 같이 반환. 별도 호출 없이 한 콜 안에서 디버깅 컨텍스트 다 잡힘.
+
+```js
+(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const findBtn = (txt, root=document) => [...root.querySelectorAll("button, [role=button]")]
+    .filter(el => el.offsetParent !== null)
+    .find(el => el.textContent?.trim() === txt);
+  const waitFor = async (predicate, timeout=3000) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeout) {
+      const r = predicate();
+      if (r) return r;
+      await sleep(50);
+    }
+    return null;
+  };
+
+  const traces = [];
+  const trace = (label, extra={}) => traces.push({
+    step: traces.length + 1, label, url: location.pathname, ...extra
+  });
+  const dumpDom = () => ({
+    visibleText: document.body.innerText.slice(0, 300),
+    visibleBtns: [...document.querySelectorAll("button, [role=button]")]
+      .filter(el => el.offsetParent !== null)
+      .map(el => el.textContent?.trim().slice(0, 40)).filter(Boolean),
+    errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")]
+      .map(el => el.textContent?.trim().slice(0, 200)),
+  });
+
+  // step 1
+  const action = findBtn("Record Your Weight");
+  if (!action) { trace("action NOT FOUND", dumpDom()); return { ok: false, traces }; }
+  action.click();
+  trace("clicked action");
+
+  // step 2 — 모달 폴링
+  const logNow = await waitFor(() => {
+    const d = document.querySelector("[role=dialog]");
+    return d ? findBtn("Log Now", d) : null;
+  });
+  if (!logNow) { trace("Log Now WAIT FAILED", dumpDom()); return { ok: false, traces }; }
+  logNow.click();
+  trace("clicked Log Now");
+
+  // step 3 — React input
+  const input = await waitFor(() => document.querySelector("input[inputmode=decimal]"));
+  if (!input) { trace("input NOT FOUND", dumpDom()); return { ok: false, traces }; }
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(input, "60.5");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  trace("input filled");
+
+  // step 4
+  findBtn("Confirm")?.click();
+  trace("clicked Confirm");
+
+  return { ok: true, traces };
+})()
+```
+
+### React Input Fill — setter 필수
+
+`input.value = "60"` 직접 대입은 React가 안 감지. 항상:
+
+```js
+const setReactValue = (el, val) => {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(el, val);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+};
+```
+
+### 고정 sleep 대신 element waitFor
+
+```js
+findBtn("Log Now").click();
+await waitFor(() => document.querySelector("input[inputmode=decimal]"));  // 떴으면 즉시 진행
+```
+
+라우트 변경 후 첫 paint까지 평균 200-400ms. 고정 `sleep(1500)`는 그 차이만큼 화면에 텀으로 보임.
+
+---
+
+## 카테고리 4 — 네트워크/콘솔
+
+API 실패, 빈 데이터, 에러 바운더리, console 에러.
 
 ### 콘솔 에러 빠른 진단
 
 ```bash
-# 클리어 → 페이지 동작 → 캡처
 agent-browser --cdp 9223 console --clear
-# (사용자가 페이지 조작 or eval로 시뮬레이션)
+# (조작)
 agent-browser --cdp 9223 console --json | head -50
 ```
 
@@ -249,47 +276,33 @@ agent-browser --cdp 9223 console --json | head -50
 
 ```bash
 agent-browser --cdp 9223 network requests --clear
-# 조작
+# (조작)
 agent-browser --cdp 9223 network requests --status 4xx --json
 agent-browser --cdp 9223 network requests --status 5xx --json
-# 특정 API만
 agent-browser --cdp 9223 network requests --filter "/api/v1/users" --json
 ```
 
-### API 응답 mocking (1회성)
-
-특정 API가 깨졌다 치고 UI 확인 / 빈 상태 점검:
+### Mocking (1회성)
 
 ```bash
-agent-browser --cdp 9223 network route "**/api/v1/foo" --body '{"items":[]}'   # 빈 응답
-agent-browser --cdp 9223 network route "**/api/v1/bar" --abort                  # 실패
+agent-browser --cdp 9223 network route "**/api/v1/foo" --body '{"items":[]}'  # 빈 응답
+agent-browser --cdp 9223 network route "**/api/v1/bar" --abort                 # 실패
 agent-browser --cdp 9223 unroute   # 끝나면 정리
 ```
 
-### React state / 컨텍스트 덤프
+### ⚠️ 콘솔이 만능 아님
 
-페이지 내부 상태 추출 (devtools 안 켜고):
+콘솔에 **안 찍히는** 실패 흔함:
+- React Suspense fallback 무한 루프
+- Optimistic update silent rollback
+- React Query `enabled: false` — 요청 자체가 안 나감
+- Error Boundary가 잡아서 silent
 
-```bash
-agent-browser --cdp 9223 eval '
-(() => {
-  // localStorage / sessionStorage / cookie
-  const storage = {
-    local: { ...localStorage },
-    session: { ...sessionStorage },
-    cookie: document.cookie,
-  };
-  // React Query cache (window에 노출돼있다면)
-  const rq = window.__REACT_QUERY_DEVTOOLS__?.queryClient?.getQueryCache().getAll()
-    .map(q => ({ key: q.queryKey, status: q.state.status, error: q.state.error?.message }));
-  return { storage, rq, url: location.pathname };
-})()
-'
-```
+→ 콘솔만 보고 "이상 없음" 단정 금지. **네트워크 탭 같이** 볼 것.
 
-### 디버깅 dump 표준 패턴 (한 방)
+### 디버깅 dump 표준 (한 콜로 종합)
 
-문제 재현 후 한 콜로 종합 진단:
+문제 재현 후 한 번에:
 
 ```bash
 agent-browser --cdp 9223 eval '
@@ -302,85 +315,42 @@ agent-browser --cdp 9223 eval '
   inputs: [...document.querySelectorAll("input")]
     .filter(el => el.offsetParent !== null)
     .map(el => ({ name: el.name, type: el.type, value: el.value, valid: el.validity.valid })),
+  storage: { local: { ...localStorage }, cookie: document.cookie },
 }))()
 ' && agent-browser --cdp 9223 console --json | head -30
 ```
 
-## 속도 최적화 (정확성 손상 X)
+---
 
-### a. 스냅샷 스코프로 토큰/시간 둘 다 절감
-전체 트리 덤프 금지. 항상 `-i -c -d 2 -s "<selector>"`:
+## Element 찾기 패턴
 
-```bash
-agent-browser --cdp 9223 snapshot -i -c -d 2 -s "[role=dialog]"    # 시트 안만
-agent-browser --cdp 9223 snapshot -i -c -d 2 -s "main, [role=main]" # 메인 영역만
-```
+| 케이스 | 패턴 |
+|---|---|
+| 버튼 정확 매칭 | `findBtn(txt)` |
+| 부분 텍스트 매칭 | `el.textContent?.includes(txt)` |
+| visible만 | `.filter(el => el.offsetParent !== null)` |
+| input by type | `inputMode === "decimal"` / `type === "number"` |
+| dialog 안에서만 | `document.querySelector("[role=dialog]")` 스코프 |
 
-### b. `find` 액션으로 snapshot 생략
-"버튼 텍스트 X 클릭" 같은 단발은 snapshot 없이 1콜:
-
-```bash
-agent-browser --cdp 9223 find text "Log Now" click
-agent-browser --cdp 9223 find role button --name "Confirm" click
-```
-
-snapshot → @ref 클릭 2콜 → 1콜로 단축.
-
-### c. 고정 sleep 대신 element wait
-JS IIFE 안에서도 가능하면 polling. `await sleep(1500)`는 페이지가 빨리 떴어도 끝까지 기다림.
-
-```js
-const waitFor = async (sel, timeout=3000) => {
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeout) {
-    const el = document.querySelector(sel);
-    if (el && el.offsetParent !== null) return el;
-    await new Promise(r => setTimeout(r, 50));
-  }
-  throw new Error("timeout: " + sel);
-};
-
-// 사용
-findBtn("Log Now").click();
-await waitFor("input[inputmode=decimal]");   // 떴으면 즉시 진행
-```
-
-라우트 변경 후 첫 paint까지 평균 200-400ms — 고정 1.5s sleep을 200ms 가까이로 줄임.
-
-### d. 스크린샷은 JPEG + /tmp 디폴트
-환경변수 한 번 박아두면 매번 경로/포맷 안 적어도 됨:
-
-```bash
-export AGENT_BROWSER_SCREENSHOT_DIR=/tmp
-export AGENT_BROWSER_SCREENSHOT_FORMAT=jpeg
-export AGENT_BROWSER_SCREENSHOT_QUALITY=70
-```
-
-검증용 스샷이라면 jpeg 70%면 충분 (png 대비 ~5-10배 작음 → Read 토큰도 줄어듦).
-
-### e. 첫 콜 느리면 데몬 꺼져있던 것
-세션 시작 후 첫 `agent-browser` 호출이 유독 느린(2-3s) 경우, daemon 콜드 스타트. 두 번째부터 정상. 대처:
-
-```bash
-agent-browser --cdp 9223 eval "1" >/dev/null   # 워밍업 핑 (선택)
-```
-
-### f. snapshot/eval 결과 head로 잘라 토큰 절감
-구조 파악용 덤프는 `| head -50` 또는 `| tail -40`로 자름. visible buttons 10개만 봐도 충분.
+---
 
 ## 사용자 시그널 → 즉시 전환
 
-| 사용자 신호 | 행동 |
-|-------------|------|
-| "너무 느려" / "답답해" | 즉시 snapshot-ref 루프 중단 → eval IIFE 패턴으로 |
-| "다시 한 번에 가" | 전체 시나리오를 단일 eval로 재구성 |
-| "기존 크롬으로" / "9223" | `--cdp 9223 + tab list + tab tN` 절차 항상 적용 |
+| 시그널 | 행동 |
+|---|---|
+| "너무 느려" / "답답해" | 즉시 snapshot-ref 루프 중단 → eval IIFE |
+| "다시 한 번에 가" | 전체 시나리오 단일 eval 재구성 |
+| "기존 크롬으로" / "9223" | `--cdp 9223 + tab list + tab tN` 적용 |
+
+---
 
 ## 안 쓰는 패턴
 
-- ❌ `agent-browser click @e1 && agent-browser wait 500 && agent-browser click @e2` 식 체이닝 — CLI 부팅 누적
+- ❌ `agent-browser click @e1 && wait 500 && click @e2` 식 체이닝 — CLI 부팅 누적
 - ❌ `tab 2` (positional integer)
 - ❌ `input.value = "..."` (React 안 감지)
-- ❌ snapshot 5번 이상 반복 — 그 시점에 멈추고 eval 묶음으로
-- ❌ **모달/시트 띄운 직후 CLI 호출 종료 후 별도 eval로 재진입** — 사용자가 보는 화면에 "모달 뜬 채 멈춰있는 텀"이 그대로 노출됨. 트리거 텍스트가 이미 보였다면 한 IIFE에서 `waitFor` + 클릭으로 이어 갈 것.
-- ❌ 모달/페이지 전환 후 고정 `sleep(1000ms+)` — `waitFor()` 폴링이 200~400ms면 충분. 고정 sleep은 그 차이만큼 화면에 텀으로 보임.
+- ❌ snapshot 5번 이상 반복 — 멈추고 IIFE로
+- ❌ 모달/시트 띄운 직후 CLI 종료 + 별도 eval 재진입 — 사용자 화면에 "모달 뜬 채 멈춤" 노출
+- ❌ 모달/페이지 전환 후 고정 `sleep(1000ms+)` — waitFor 폴링이 200-400ms면 충분
+- ❌ 픽셀 단위 일치 판정 (1-2px, 색 hex 미세 비교)
+- ❌ `agent-browser viewport ...` — 사용자가 띄운 탭 크기 변경 금지
