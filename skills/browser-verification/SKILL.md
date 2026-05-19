@@ -177,6 +177,8 @@ Tier와 **직교 축**. diff에서 어떤 카테고리를 검증해야 하는지
 | 변경 패턴 (diff에서 탐지) | 추가 카테고리 |
 |---|---|
 | Tailwind className / 색 / `tokens.css` 변경 | **1-a** (스크린샷) + **1-b** (token check) |
+| 인라인 `style={{ ... }}` 에 CSS 변수/색상 변경 | **1-b** (token check) — classList 체크 불가, `getComputedStyle`로 computed 값 비교 |
+| **applying-figma-designs 스킬을 탄 작업** | **1-b** 무조건 포함 — 변경 패턴 무관. Figma 스펙 색상값 vs computed 값 비교 필수 |
 | 새 JSX 요소 mount / 조건부 렌더 추가 | **1-a** (구조 sanity) |
 | 새 `onClick` / 핸들러 함수 | **2** (단일 액션) |
 | 폼/입력/다단계 모달 시퀀스 변경 | **3** (멀티스텝 IIFE) |
