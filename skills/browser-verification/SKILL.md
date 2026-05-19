@@ -7,14 +7,22 @@ description: Auto-invoke when Stop hook injects "[auto-verify]", or when user ex
 
 ## Overview
 
-UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 위한 스킬. 두 가지 경로로 발동된다:
+UI/플로우의 **동적 인터랙션 및 시스템 안정성**을 확인하기 위한 스킬. 두 가지 경로로 발동:
 
 1. **Auto-invocation** — Stop hook이 "[auto-verify]" 메시지를 stderr로 주입하면 자동 실행
-2. **명시적 요청** — 사용자가 검증을 직접 요청한 경우
+2. **명시적 요청** — 사용자가 검증을 직접 요청
 
-agent-browser는 디자인 시안과 "똑같이 생겼는지(Visual Diff)"를 검증하는 도구가 아니다. 폼 제출, 버튼 클릭, DOM 깨짐, JS 콘솔 에러 등 "제대로 동작하는지"를 시뮬레이션할 때만 사용한다.
+**커버 범위 (agent-browser 스킬의 8-카테고리 기준):**
+- ✅ 카테고리 2 (단일 액션) — Light path 본진
+- ✅ 카테고리 3 (멀티스텝) — Full path 본진
+- ✅ 카테고리 4 (콘솔/네트워크) — 항상 같이 체크
+- ❌ 카테고리 1 (시각/스타일) — auto-verify는 비교 기준(git diff)이 없어 제외 → agent-browser 수동 사용
 
-**뷰포트는 절대 변경하지 않는다.** 사용자가 이미 띄운 Chrome 탭의 현재 크기를 그대로 사용. `agent-browser viewport` 호출 금지 — 사용자가 보고 있는 창 크기를 마음대로 바꾸면 작업 흐름이 깨진다.
+**픽셀 단위 일치 판정은 하지 않음.** 토큰/클래스 적용 여부(아래 Token Application Check)만 확인.
+
+**뷰포트 변경 금지.** 사용자가 띄운 Chrome 탭 크기 그대로 사용. `agent-browser viewport` 호출 X.
+
+> agent-browser CLI 디테일(IIFE 패턴 / React setter / CDP attach 절차)은 **`agent-browser` 스킬** 참고. 본 스킬은 auto-verify *프로토콜* (언제/어떻게/얼마나 검증할지)에 집중.
 
 ## When to Use
 
