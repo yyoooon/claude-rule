@@ -93,9 +93,7 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 
 ### 보고 형식
 
-```
-⏭️ SKIP (1.5s) — wiring-only (onClick prop 추가, record 페이지에서 동일 패턴 동작 중)
-```
+**Silent.** 사용자 채팅에 메시지 출력하지 않음. sentinel 파일만 조용히 업데이트하고 종료.
 
 ## Verification Tier Selection
 
