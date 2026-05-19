@@ -185,23 +185,14 @@ Tier와 **직교 축**. diff에서 어떤 카테고리를 검증해야 하는지
 
 **디폴트로 카테고리 4(console/network)는 항상 포함** — 거의 free, silent 버그 잡음.
 
-### 실행 분리 (A/B/C 그룹)
+### 실행
 
-| 그룹 | 카테고리 | 실행 방식 |
-|---|---|---|
-| **A. Eval IIFE 1콜** | 1-b, 2, 3 | DOM-side 전부 한 IIFE에 묶음 |
-| **B. 사이드 CLI** | 4 | `console --json` + `network requests --json` 2콜 (싸다) |
-| **C. 별도 콜 + Read** | 1-a | 스크린샷 + 이미지 Read (이미지 토큰 비용) |
+cat set이 결정되면 **`agent-browser` 스킬의 "다중 카테고리 합치기"** 패턴 그대로 실행:
+- A 그룹(1-b/2/3) → IIFE 1콜
+- B 그룹(4) → console/network 2콜
+- C 그룹(1-a) → 시각 변경 있을 때만 스크린샷 + Read
 
-→ **5개 카테고리 다 켜져도 IIFE 1콜 + console/network 2콜 + (선택)스크린샷 1콜 = 5-10초 안에 종료.**
-
-### IIFE 본문 합치는 규칙
-
-cat set에 따라 IIFE를 조립 (별도 호출 X, 한 콜에 다 묶음):
-- **1-b 포함** → `inspect(sel)` 헬퍼로 computed style + rect 같이 캡처
-- **2 포함** → 단일 element click 시뮬레이션 추가
-- **3 포함** → trace + waitFor + React setter로 다단계 시뮬레이션
-- (CLI 디테일은 `agent-browser` 스킬 카테고리 1-b/2/3 참고)
+IIFE 본문 조립 규칙 / 예시 코드는 모두 agent-browser 본문 참고 (본 스킬은 어떤 cat을 켤지만 결정).
 
 ### 산출 예시
 
