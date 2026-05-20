@@ -297,31 +297,10 @@ agent-browser --cdp 9223 tab list 2>&1
 
 ### Step 2.5 — 실행 전 커밋 (필수)
 
-eval을 첫 호출하기 전에 아래 두 조건을 모두 충족해야 한다. 하나라도 안 됐으면 eval 호출 금지.
+eval/batch 첫 호출 전 두 조건 충족:
 
 1. **컴포넌트 코드를 Read로 읽었는가?** — DOM selector, className, data-attribute 등 구조를 코드로 파악. eval로 탐색하지 말 것.
-2. **전체 플로우를 IIFE 1개로 작성했는가?** — 중간 상태 확인이 필요하면 IIFE 안에서 변수로 캡처. 단계별 별도 eval 금지.
-
-```js
-// 올바른 패턴 — 중간 상태를 변수로 캡처해서 return에 담음
-(async () => {
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-  const before = ...; // step 1 결과
-
-  el.click();         // step 2
-  await sleep(300);
-
-  const afterClick = ...; // step 2 결과 캡처
-
-  profileBtn.click(); // step 3
-  await sleep(1500);
-
-  const after = ...;  // step 3 결과
-
-  return { before, afterClick, after, pass: after === expected };
-})()
-```
+2. **전체 플로우를 1콜로 작성했는가?** — navigation 동반은 `batch`, 같은 페이지는 IIFE. 단계별 별도 호출 금지. 본문 조립은 `agent-browser` 스킬 "Tool Selection Hierarchy" + "Navigation Boundary" 참고.
 
 ### Step 3 — 검증 (1콜)
 
