@@ -253,25 +253,20 @@ agent-browser --cdp 9223 batch \
 1. **1-2회 eval로 구조 파악** — 폼/버튼 selector 덤프
 2. **전체 플로우 IIFE** — 클릭/대기/입력을 JS 한 덩어리로 브라우저에 주입
 
-### 구조 파악 dump
+### 구조 파악 dump (선택)
+
+페이지 구조 모를 때만 1회. 보통은 코드 Read로 selector 먼저 파악.
 
 ```bash
 agent-browser --cdp 9223 eval '
-(() => {
-  const btns = [...document.querySelectorAll("button, [role=button]")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ text: el.textContent?.trim().slice(0,60), aria: el.getAttribute("aria-label") }));
-  const inputs = [...document.querySelectorAll("input")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ type: el.type, placeholder: el.placeholder, inputmode: el.inputMode, value: el.value }));
-  return { url: location.pathname, btns, inputs };
-})()
-'
+(() => ({
+  url: location.pathname,
+  btns: [...document.querySelectorAll("button, [role=button]")].filter(el => el.offsetParent).map(el => el.textContent?.trim().slice(0,60)),
+  inputs: [...document.querySelectorAll("input")].filter(el => el.offsetParent).map(el => ({ type: el.type, name: el.name, value: el.value })),
+}))()'
 ```
 
-**dump에서 다음 트리거 이미 잡혔다면 별도 호출 금지** — 첫 dump에 다음 단계 selector가 보이면 한 IIFE에 묶어버릴 것. 별도 eval로 끊으면 사용자 화면에 "모달 뜬 채 멈춤" 노출됨.
-
-"다음 UI는 진짜 모르는" 케이스 (동적 폼, 조건부 분기) 한정으로만 중간 dump 허용.
+dump에 다음 단계 selector 잡혔으면 별도 호출 X — 한 IIFE에 묶어버릴 것 (사용자 화면에 "모달 뜬 채 멈춤" 노출 방지).
 
 ### 전체 플로우 IIFE 패턴
 
