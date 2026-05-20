@@ -362,14 +362,25 @@ agent-browser --cdp 9223 eval '
 - `tab navigated away` 리턴 → 사용자에게 "검증 대상 탭이 다른 페이지로 이동했습니다. 다시 `/<expectedPath>`로 가주세요" 안내 + sentinel 기록 + 종료
 - 변경 관련 값이 기대와 다름 → 사용자에게 짧게 보고하고 종료 (light path는 fix loop 안 함)
 
-### Step 4 — Console 에러 체크 (1콜)
+### Step 4 — Console + Network 에러 체크 (1콜)
+
+count + 핵심 메시지만 빨리 뽑기:
 
 ```bash
-agent-browser --cdp 9223 console --json 2>&1 | head -200
+agent-browser --cdp 9223 console --json 2>&1 | \
+  jq -c '{errors: [.data.messages[]? | select(.type=="error") | .text | .[0:160]], count: ([.data.messages[]? | select(.type=="error")] | length)}'
 ```
 
-- 출력이 너무 길면 grep으로 error/warn level만 필터: `... | jq '.data.messages[] | select(.type=="error" or .type=="warning")'`
+API 변경 검증이면 4xx/5xx도 같이:
+
+```bash
+agent-browser --cdp 9223 network requests --status 4xx --json 2>&1 | jq -c '[.data.requests[]? | {url, status}]'
+agent-browser --cdp 9223 network requests --status 5xx --json 2>&1 | jq -c '[.data.requests[]? | {url, status}]'
+```
+
+- 사전 클리어 권장: 검증 시작 전에 `agent-browser --cdp 9223 console --clear` + `network requests --clear` (이전 노이즈 제거)
 - d3 / SVG / 변경 파일 관련 error 0건이면 PASS
+- **CareHubBridge / 다른 워크트리 포트(`worktrees_b` 등)에서 온 에러는 무시** — 환경 차이 (메모리 룰)
 
 ### Step 5 — 보고 + Sentinel
 
