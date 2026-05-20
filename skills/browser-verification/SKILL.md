@@ -568,22 +568,15 @@ mkdir -p "$PROJECT_ROOT/.claude"
 ## Workflow Summary
 
 ```
-1. [Auto] Stop hook에서 [auto-verify] 시그널 감지 OR [Manual] 사용자 요청
-2. 이번 턴에 코드 변경 없으면 sentinel만 기록하고 종료
-3. **Tier Selection** — diff 크기/범위로 light/full 분기 (얼마나)
-4. **Category Selection** — diff 패턴으로 cat set 산출 (무엇을). A 그룹은 IIFE 1콜에 합침, 1-a는 조건부 스크린샷
-5. Light Path: 메인 직접 (tab list / reload+eval / console / [선택]스크린샷) — 5–10초
-   - PASS → 1줄 보고 + sentinel 기록 → 종료
-   - 변경 미반영/console 에러 → 짧게 사유 보고 + sentinel 안 기록 (사용자 수정 유도)
-   - light path가 cover 못 하는 변경 발견 → Full Path로 escalate
-6. Full Path: Subagent dispatch (general-purpose) — Brief 템플릿 사용
-7. 서브에이전트 결과 분류:
-   - SKIP (정상) → **silent** + sentinel 기록 → 종료
-   - SKIP (인프라 에러) → 짧게 보고 + sentinel 기록 → 종료
-   - PASS → 짧게 보고 + sentinel 기록 → 종료
-   - FAIL (코드 문제) → Fix Loop
-8. Fix Loop (최대 2회): systematic-debugging → 수정 → 재검증
-9. 최종 결과 보고
+1. Auto-verify 시그널 / 사용자 요청 진입
+2. 코드 변경 없음 → silent sentinel + 종료
+3. Wiring-Only Skip Gate 통과 → silent sentinel + 종료
+4. Tier Selection (light/full) + Category Selection (1-a/1-b/2/3/4)
+5. Light Path: 메인 직접, 5-10초. 도구 분기는 Step 3 표대로.
+   PASS → 보고 + sentinel | FAIL → 사유 보고 (sentinel X) | escalate 가능 → Full
+6. Full Path: 서브에이전트 dispatch (haiku 디폴트). Brief 템플릿 사용.
+   PASS/SKIP → 보고 + sentinel | FAIL → Fix Loop (최대 2회)
+7. Fix Loop: systematic-debugging → 수정 → 재검증. 막히면 에스컬레이션 (sentinel X).
 ```
 
 ## Common Mistakes (검증 프로토콜 관점)
