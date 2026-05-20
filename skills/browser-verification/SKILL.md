@@ -274,6 +274,34 @@ agent-browser --cdp 9223 tab list 2>&1
 - **매칭 탭 있지만 사용자가 다른 탭으로 navigate했을 가능성** → tab switch 후 location.pathname 검증 (Step 3 eval 안에서)
 - ⚠️ **유사 URL 다른 탭으로 자동 switch 금지**: 예) expected가 `/record`인데 `/tracker/heartrate` 탭에 같은 컴포넌트가 떠 있더라도, 진입 경로/상태가 다르면 검증 동치 X. expected와 정확히 일치하지 않으면 새 탭 열거나 사용자에게 안내.
 
+### Step 2.5 — 실행 전 커밋 (필수)
+
+eval을 첫 호출하기 전에 아래 두 조건을 모두 충족해야 한다. 하나라도 안 됐으면 eval 호출 금지.
+
+1. **컴포넌트 코드를 Read로 읽었는가?** — DOM selector, className, data-attribute 등 구조를 코드로 파악. eval로 탐색하지 말 것.
+2. **전체 플로우를 IIFE 1개로 작성했는가?** — 중간 상태 확인이 필요하면 IIFE 안에서 변수로 캡처. 단계별 별도 eval 금지.
+
+```js
+// 올바른 패턴 — 중간 상태를 변수로 캡처해서 return에 담음
+(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const before = ...; // step 1 결과
+
+  el.click();         // step 2
+  await sleep(300);
+
+  const afterClick = ...; // step 2 결과 캡처
+
+  profileBtn.click(); // step 3
+  await sleep(1500);
+
+  const after = ...;  // step 3 결과
+
+  return { before, afterClick, after, pass: after === expected };
+})()
+```
+
 ### Step 3 — 검증 (1콜, IIFE)
 
 **먼저 Category Selection으로 cat set 결정.** IIFE 본문 조립은 `agent-browser` 스킬의 "다중 카테고리 합치기" 그대로. cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read 추가.
