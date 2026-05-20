@@ -206,16 +206,18 @@ Tier와 **직교 축**. diff에서 어떤 카테고리를 검증해야 하는지
 
 ### diff 패턴 → 카테고리 매핑
 
-| 변경 패턴 (diff에서 탐지) | 추가 카테고리 |
-|---|---|
-| Tailwind className / 색 / `tokens.css` 변경 | **1-a** (스크린샷) + **1-b** (token check) |
-| 인라인 `style={{ ... }}` 에 CSS 변수/색상 변경 | **1-b** (token check) — classList 체크 불가, `getComputedStyle`로 computed 값 비교 |
-| **applying-figma-designs 스킬을 탄 작업** | **1-b** 무조건 포함 — 변경 패턴 무관. Figma 스펙 색상값 vs computed 값 비교 필수 |
-| 새 JSX 요소 mount / 조건부 렌더 추가 | **1-a** (구조 sanity) |
-| 새 `onClick` / 핸들러 함수 | **2** (단일 액션) |
-| 폼/입력/다단계 모달 시퀀스 변경 | **3** (멀티스텝 IIFE) |
-| API/mutation/queries/fetch 변경 | **4** (이미 default) |
-| `useEffect` 초기 mount fetch | **4** + **1-a** (mount sanity) |
+| 변경 패턴 (diff에서 탐지) | 추가 카테고리 | 권장 도구 |
+|---|---|---|
+| Tailwind className / 색 / `tokens.css` 변경 | **1-a** (스크린샷) + **1-b** (token check) | IIFE (classList/computed) + 스크린샷 |
+| 인라인 `style={{ ... }}` 에 CSS 변수/색상 변경 | **1-b** (token check) — classList 체크 불가, `getComputedStyle`로 computed 값 비교 | IIFE |
+| **applying-figma-designs 스킬을 탄 작업** | **1-b** 무조건 포함 — 변경 패턴 무관. Figma 스펙 색상값 vs computed 값 비교 필수 | IIFE |
+| 새 JSX 요소 mount / 조건부 렌더 추가 | **1-a** (구조 sanity) | `find text "..."` 또는 IIFE |
+| 새 `onClick` / 핸들러 함수 (navigation 없음) | **2** (단일 액션) | `find ... click` |
+| **`router.push` 인자 변경 / link href 변경 / navigation 트리거 변경** | **2** (단일 액션, navigation) | **`batch "find ... click" "wait --url '**/...'" "get url"` — IIFE 금지** |
+| 폼/입력/다단계 모달 시퀀스 변경 (같은 페이지 내) | **3** (멀티스텝 IIFE) | IIFE |
+| 폼 submit → 페이지 전환 → 다음 페이지 검증 | **3** (멀티스텝 batch+IIFE) | IIFE(입력) → batch(submit + wait + 검증) |
+| API/mutation/queries/fetch 변경 | **4** (이미 default) | `network requests --status 4xx/5xx --json` |
+| `useEffect` 초기 mount fetch | **4** + **1-a** (mount sanity) | batch(`reload` + `wait --load networkidle` + 검증) |
 
 **디폴트로 카테고리 4(console/network)는 항상 포함** — 거의 free, silent 버그 잡음.
 
