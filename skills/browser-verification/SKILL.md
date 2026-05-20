@@ -215,6 +215,32 @@ diff: src/app/record/_components/WeightForm.tsx + src/styles/tokens.css
   3. 스크린샷 1콜 + Read (cat 1-a)
 ```
 
+## 검증 계획 사전 공유 (필수)
+
+Tier + Category Selection이 끝나면 **eval 실행 전에 반드시 사용자에게 검증 계획을 보여주고 진행 여부를 확인**한다.
+
+```
+검증 계획:
+- 경로: Light path / Full path
+- 대상 URL: /xxx
+- 검증 항목:
+  - [cat 2] 버튼 클릭 → 상태 변경 확인
+  - [cat 4] console 에러 0건 확인
+  - (항목별로 구체적으로 — "console 에러 확인" X, "날짜 클릭 후 selectedDate 변경 확인" O)
+- IIFE 흐름 (한 번에 실행할 단계 순서):
+  1. 현재 선택 날짜 캡처
+  2. 5/20 클릭
+  3. 500ms 대기
+  4. 선택 날짜 재확인
+  5. console 에러 체크
+```
+
+사용자가 "진행해" / "응" / "ㅇㅇ" 등 승인하면 실행. 이 단계를 건너뛰고 eval을 먼저 날리는 것은 금지.
+
+**예외 (계획 공유 생략 가능):**
+- Wiring-Only SKIP 케이스 (sentinel만 기록하고 끝)
+- 코드 변경 없음 케이스
+
 ## Light Path Protocol
 
 메인 Claude가 직접 실행. 서브에이전트 dispatch 안 함.
