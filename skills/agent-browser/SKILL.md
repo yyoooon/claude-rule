@@ -196,9 +196,9 @@ agent-browser --cdp 9223 eval '
 
 ---
 
-## 카테고리 2 — 단일 액션 (find + scoped snapshot)
+## 카테고리 2 — 단일 액션 (find + wait + scoped snapshot)
 
-"버튼 누르면 모달 뜨나" 같은 1-2 step.
+"버튼 누르면 모달 뜨나" / "링크 누르면 어디로 가나" 같은 1-2 step.
 
 ```bash
 # find 액션으로 snapshot 생략 — 2콜 → 1콜
@@ -210,12 +210,32 @@ agent-browser --cdp 9223 snapshot -i -c -d 2 -s "[role=dialog]"
 agent-browser --cdp 9223 snapshot -i -c -d 2 -s "main, [role=main]"
 ```
 
-**대기는 내장 waitFor 활용** — 커스텀 `setTimeout` 폴링 짜지 말 것:
+### 대기 — 상황별 wait 선택
+
+커스텀 `setTimeout` 폴링 짜지 말 것. 상황에 맞는 wait 선택:
+
 ```bash
-agent-browser --cdp 9223 wait --selector "[role=dialog]"
+agent-browser --cdp 9223 wait "[role=dialog]"           # 엘리먼트 등장
+agent-browser --cdp 9223 wait --text "Success"          # 텍스트 등장
+agent-browser --cdp 9223 wait --url '**/dashboard'      # URL 패턴 매칭 (navigation 완료)
+agent-browser --cdp 9223 wait --load networkidle        # 네트워크 idle (SPA hydration 안전 대기)
+agent-browser --cdp 9223 wait --fn "window.app.ready"   # JS 표현식 truthy
 ```
 
-IIFE 안에서 폴링 직접 짜야 하는 경우는 카테고리 3 참고.
+### Navigation 동반 단일 액션 → batch 1콜
+
+"링크 클릭 → URL 변경 검증" 같은 패턴은 IIFE 짜지 말고 batch:
+
+```bash
+agent-browser --cdp 9223 batch \
+  "find text 'View Details' click" \
+  "wait --url '**/tracker/energy'" \
+  "get url"
+```
+
+→ LLM turn 1번. CDP race 0번. IIFE + 외부 sleep + tab list 폴링 패턴보다 10배 빠름.
+
+IIFE 안에서 폴링 직접 짜야 하는 경우(같은 페이지 내 React 상태/모달 등장 등)는 카테고리 3 참고.
 
 ---
 
