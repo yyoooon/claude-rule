@@ -432,57 +432,20 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    - 매칭 탭 없음 → agent-browser --cdp 9223 open http://localhost:PORT/route (--cdp로 사용자 Chrome에 새 탭 추가)
    - **사용자가 검증 도중 다른 페이지로 navigate할 수 있음.** 다음 eval 안에서 location.pathname을 expected와 다시 검증하고, mismatch면 즉시 reason: "tab navigated away — 사용자가 검증 대상 페이지에서 벗어남"로 SKIP 리턴.
 
-5-7. [버퍼 클리어 + 리로드 + 동작 시뮬레이션] — 1-2개 bash 호출로 묶기
+5-7. [버퍼 클리어 + 동작 시뮬레이션] — 변경 성격별 패턴 선택
 
-   **먼저 Category Selection (본 스킬 본문 참고)으로 cat set 산출.** IIFE 조립은 `agent-browser` 스킬의 "다중 카테고리 합치기" 그대로. cat 1-a 포함이면 같은 체인에 `agent-browser screenshot --output /tmp/v.png` 추가.
+   Category Selection으로 cat set 산출 후 본 스킬 "Step 3" 분기표에 따라 도구 선택. 구체 명령은 `agent-browser` 스킬 "Tool Selection Hierarchy" + "Navigation Boundary" 참고.
 
-   **도구 분기 (필수)**:
-   - **Navigation 검증 (URL 변경 확인)** — `batch` + `wait --url` 사용. IIFE 안에서 `location.href`/`reload`/router-click 절대 묶지 말 것 (CDP race).
-   - **같은 페이지 내 검증** — 기존대로 eval IIFE.
-   - **state 변경 후 reload + 검증** — `batch "eval '...'" "reload" "wait --load networkidle" "..."` 패턴.
-
-   #### A. Navigation 검증 패턴
-
+   공통 전처리:
    ```bash
    agent-browser --cdp 9223 console --clear >/dev/null
    agent-browser --cdp 9223 network requests --clear >/dev/null
    agent-browser --cdp 9223 tab t<N> >/dev/null
-   agent-browser --cdp 9223 batch \
-     "find text '<trigger label>' click" \
-     "wait --url '**/<dest>'" \
-     "get url"
    ```
 
-   #### B. 같은 페이지 내 검증 패턴
+   그 다음 navigation 검증이면 `batch + wait --url`, 같은 페이지면 IIFE, state 변경이면 `batch (eval + reload + wait --load + 검증)`.
 
-   ```bash
-   agent-browser --cdp 9223 console --clear >/dev/null
-   agent-browser --cdp 9223 network requests --clear >/dev/null
-   agent-browser --cdp 9223 tab t<N> >/dev/null
-   agent-browser --cdp 9223 eval '
-   (async () => {
-     if (location.pathname !== "<expectedPath>") {
-       return { ok: false, reason: "tab navigated away", currentUrl: location.pathname };
-     }
-     // 같은 페이지 내 클릭/입력/검사 — navigation 트리거 금지
-     return { ok: true, /* 변경 관련 attribute/text */ };
-   })()
-   '
-   ```
-
-   #### C. State 변경 + reload + 검증 패턴
-
-   ```bash
-   agent-browser --cdp 9223 tab t<N> >/dev/null
-   agent-browser --cdp 9223 batch \
-     "eval 'sessionStorage.setItem(\"key\", JSON.stringify(\"value\"))'" \
-     "reload" \
-     "wait --load networkidle" \
-     "eval '({ ok: location.pathname === \"<expected>\" })'"
-   ```
-
-   ⚠️ 뷰포트는 절대 변경하지 말 것. 사용자가 띄운 탭 크기 그대로 사용 (`agent-browser viewport` 호출 금지).
-   ⚠️ **IIFE 안에서 `location.href`/`location.reload()`/navigation 트리거 click 호출 금지** — CDP context 끊김. batch step으로 분리.
+   ⚠️ viewport 변경 금지. ⚠️ IIFE 안에서 navigation 트리거 금지 (CDP race).
 
 8. [무결성] — 1개 bash 호출로 묶기
    console + network 4xx/5xx를 jq로 한 번에. network는 `--status 4xx` 내장 필터 사용:
