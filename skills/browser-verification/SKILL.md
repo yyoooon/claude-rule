@@ -304,22 +304,20 @@ eval/batch 첫 호출 전 두 조건 충족:
 
 ### Step 3 — 검증 (1콜)
 
-**먼저 Category Selection으로 cat set 결정.** 그 다음 **도구 선택**:
+Category Selection으로 cat set 결정 후 **도구 선택**:
 
 | 변경 성격 | 도구 |
 |---|---|
-| Navigation 검증 (`router.push`/link click → URL 변경) | **`batch "find text '...' click" "wait --url '**/...'" "get url"`** — IIFE 짜지 말 것 |
-| 같은 페이지 내 DOM 검증 (token, attribute, text, 모달 동작) | eval IIFE |
-| State 변경 → reload → 검증 (scenario step, auth 토큰 등) | `batch "eval '...'" "reload" "wait --load networkidle" "..."` |
-| 멀티스텝 폼 (입력 → 모달 → submit) — navigation 없음 | eval IIFE |
-| 멀티스텝 + 페이지 전환 | IIFE(입력) → batch(submit + wait + 검증) 혼합 |
+| Navigation (router.push / link click → URL 변경) | `batch "<trigger>" "wait --url '**/...'" "get url"` |
+| 같은 페이지 내 DOM (token, attribute, text, 모달 동작) | eval IIFE |
+| State 변경 → reload → 검증 | `batch "eval '...'" "reload" "wait --load networkidle" "..."` |
+| 폼 입력 → submit → 페이지 전환 | IIFE(입력) → batch(submit+wait+검증) |
 
-IIFE 본문 조립은 `agent-browser` 스킬의 "다중 카테고리 합치기" 그대로. cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read 추가.
+본문 조립 / 코드 예시는 `agent-browser` 스킬 "Tool Selection Hierarchy" + "Navigation Boundary" + "다중 카테고리 합치기" 참고. cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read.
 
-**Reload 필요 여부 판단:**
-- **생략 (HMR 충분)**: `_components/`, `_lib/`, `_mock/`, `_store/` 변경 → Turbopack HMR이 이미 반영. reload하면 CDP disconnect → 재시도 turn 낭비.
-- **필요**: middleware / SSR / route handler 변경, useEffect 초기 마운트·첫 API fetch 결과 검증.
-- **필요 (cross-route 진입)**: 매칭 탭이 없어 새 라우트에서 진입. **`batch "open <url>" "wait --load networkidle"` 또는 `batch "eval 'location.href=...'" "wait --load networkidle"`로 처리** — IIFE 안에서 nav 트리거하지 말 것. wait --load 끝나면 hydration도 안전.
+**Reload 판단:**
+- 생략 — `_components/_lib/_mock/_store/` 변경 (HMR 충분)
+- 필요 — middleware / SSR / route handler / useEffect 초기 fetch / cross-route 진입
 
 ```bash
 agent-browser --cdp 9223 tab t<N> >/dev/null
