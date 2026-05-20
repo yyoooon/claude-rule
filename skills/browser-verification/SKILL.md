@@ -508,16 +508,18 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    ⚠️ **IIFE 안에서 `location.href`/`location.reload()`/navigation 트리거 click 호출 금지** — CDP context 끊김. batch step으로 분리.
 
 8. [무결성] — 1개 bash 호출로 묶기
-   console + network 4xx + 5xx를 따로 호출하지 말고 jq로 한 번에:
+   console + network 4xx/5xx를 jq로 한 번에. network는 `--status 4xx` 내장 필터 사용:
 
    ```bash
    agent-browser --cdp 9223 console --json 2>&1 | \
-     jq '{errors: [.data.messages[]? | select(.type=="error" or .type=="warning")]}' && \
-   agent-browser --cdp 9223 network requests --json 2>&1 | \
-     jq '{bad: [.data.requests[]? | select(.status >= 400)]}'
+     jq -c '{errors: [.data.messages[]? | select(.type=="error") | .text[0:160]]}' && \
+   agent-browser --cdp 9223 network requests --status 4xx --json 2>&1 | \
+     jq -c '[.data.requests[]? | {url, status}]' && \
+   agent-browser --cdp 9223 network requests --status 5xx --json 2>&1 | \
+     jq -c '[.data.requests[]? | {url, status}]'
    ```
 
-   둘 다 빈 배열이면 PASS.
+   셋 다 빈 배열이면 PASS. CareHubBridge / 다른 워크트리 포트 에러는 무시.
 
 9. [리턴] 아래 형식, 200단어 이하
 
