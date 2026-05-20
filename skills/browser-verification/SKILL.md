@@ -767,10 +767,12 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | **풀 시퀀스 over-engineering** | 차트 SVG 한 줄 시각 수정에도 서브에이전트 30–60초 풀 dispatch | Verification Tier Selection으로 light path 진입. 변경 영향도에 맞게 검증 비용 분배. |
 | **불필요한 reload** | `_components/`·`_lib/` 등 HMR 반영된 변경에도 무조건 reload → CDP disconnect → 재시도 turn | page-scoped 변경은 reload 생략. middleware·SSR·초기 마운트 검증에만 reload. |
 | 페이지 stale (서버 로직) | middleware·route handler 변경 후 reload 없이 eval → 변경 미반영 | 서버 로직 변경 시에는 반드시 reload + sleep 1500ms. |
-| **Hydration race after cross-route nav** | 매칭 탭 없어 `location.href=...` / `open <url>`로 새 라우트 진입 직후 eval → DOM은 렌더됐는데 `Object.keys(button)` 비어있음 (`__reactProps$` 미부착), `.click()` 무반응. React 동작 이슈로 오진하고 재시도 turn 낭비. | cross-route 진입엔 sleep 1500ms 디폴트. eval 안에서 `Object.keys(el).some(k=>k.startsWith('__react'))` 가드 — false면 `location.reload(); await sleep(1500)` 후 재query. 새 라우트는 항상 reload 필요로 간주. |
-| CLI 호출 누적 | step마다 agent-browser 따로 호출 | 멀티스텝은 eval IIFE 1콜 — `agent-browser` 스킬 카테고리 3 참고. |
+| **Navigation을 IIFE에 묶음 (★ 최대 시간 낭비)** | IIFE 안에서 `location.href=...` / `location.reload()` / router 트리거 `.click()` + `await sleep(...)` 후 `return` → CDP context 끊김 → "Inspected target navigated or closed" → 재시도 turn 누적 (실측 사례: 181s 사이클) | **navigation은 IIFE에서 완전히 분리**. `batch "<trigger>" "wait --url '**/dest'" "<verify>"` 패턴 사용. `wait --url` / `wait --load networkidle`이 navigation 완료를 정확히 감지. |
+| **Hydration race after cross-route nav** | 매칭 탭 없어 `location.href=...` / `open <url>`로 새 라우트 진입 직후 eval → `__reactProps$` 미부착으로 `.click()` 무반응 | `batch "open <url>" "wait --load networkidle" "find text '...' click"` 한 줄. wait --load 끝나면 hydration 완료 보장. |
+| **외부 sleep + tab list 폴링** | navigation 후 결과 확인을 `sleep 1.5; agent-browser tab list \| grep ...` 식으로 폴링 (Bash turn 다수 누적) | `wait --url '**/dest'` 1콜로 끝. batch 안에 넣으면 LLM turn도 1번. |
+| CLI 호출 누적 | step마다 agent-browser 따로 호출 | navigation 동반은 `batch`, 같은 페이지 내는 eval IIFE — `agent-browser` 스킬 "Tool Selection Hierarchy" 참고. |
 | **자체 브라우저 spawn** | `--cdp` 없이 `agent-browser open ...` 호출 → 별도 Chrome 띄움 | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것 (절대 자체 spawn 금지). |
 | 자동 수정 폭주 | 한 번 실패 후 계속 수정 시도 | 최대 2회. 누적 50줄 추가 시 즉시 에스컬레이션. |
 | Sentinel 누락 | 검증 후 hash 기록 안 함 → 다음 Stop에서 또 발화 | PASS/SKIP/인프라 에러 시 반드시 sentinel 기록. |
-| **open으로 엉뚱한 탭 오염** | `tab list` 확인 없이 `open <url>` 날림 → 현재 활성 탭(다른 포트/라우트)이 URL 변경됨 | 항상 `tab list` 먼저 → 목적 탭 `tab t<N>` switch → 그 탭 안에서 `eval "location.href=..."` 로 navigate. `open`은 매칭 탭이 아예 없을 때만. |
-| **`&&` 체인에서 탭 컨텍스트 소실** | `tab t<N> >/dev/null && eval "..."` 처럼 `&&`로 묶으면 eval이 이전 switch 컨텍스트를 잃고 활성 탭(다른 탭)에서 실행됨 | `tab t<N>` 과 이후 `eval`은 **별도 Bash tool call** 2개로 분리. 같은 `&&` 체인에 묶지 말 것. |
+| **open으로 엉뚱한 탭 오염** | `tab list` 확인 없이 `open <url>` 날림 → 현재 활성 탭(다른 포트/라우트)이 URL 변경됨 | 항상 `tab list` 먼저 → 목적 탭 `tab t<N>` switch. 매칭 탭이 아예 없을 때만 `open` 사용 (이때도 `batch "open <url>" "wait --load networkidle"`로 묶기). |
+| **`&&` 체인에서 탭 컨텍스트 소실** | `tab t<N> >/dev/null && eval "..."` 처럼 `&&`로 묶으면 eval이 이전 switch 컨텍스트를 잃고 활성 탭(다른 탭)에서 실행됨 | `tab t<N>` 과 이후 `eval`은 **별도 Bash tool call** 2개로 분리. 같은 `&&` 체인에 묶지 말 것. (참고: `batch`는 같은 daemon process 내부 순차 실행이므로 이 함정 없음 — `tab t<N>` 후 `batch "..."` 호출은 안전.) |
