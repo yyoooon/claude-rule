@@ -285,11 +285,9 @@ Category Selection으로 cat set 결정 후 **도구 선택**:
 |---|---|
 | Navigation (router.push / link click → URL 변경) | `batch "<trigger>" "wait --url '**/...'" "get url"` |
 | 같은 페이지 단일 인스펙션 (click 없음, token/attribute/text) | eval IIFE |
-| **같은 페이지 sub-view 전환 (click → React 리렌더 → 새 view 검증)** | **`batch "eval '<click>'" "wait '<new view selector>'" "eval '<inspect>'"`** |
+| **같은 페이지 sub-view 전환 (click → 리렌더)** | `batch "eval '<click>'" "wait '<new view selector>'" "eval '<inspect>'"` ⚠️ IIFE 안 setTimeout 금지 |
 | State 변경 → reload → 검증 | `batch "eval '...'" "reload" "wait --load networkidle" "..."` |
 | 폼 입력 → submit → 페이지 전환 | IIFE(입력) → batch(submit+wait+검증) |
-
-⚠️ **IIFE 안에서 `setTimeout`으로 React 리렌더 대기 금지.** 임의 시간이라 짧으면 실패, 길면 느림. click 후 새 view를 검증해야 하면 반드시 **`batch`로 분리해서 `wait <selector>`로 새 view 등장까지 대기**. `wait`는 요소 뜨자마자 다음으로 진행하므로 setTimeout(400)보다 보통 10배 이상 빠르고 환경 차이에 강함.
 
 본문 조립 / 코드 예시는 `agent-browser` 스킬 "Tool Selection Hierarchy" + "Navigation Boundary" + "다중 카테고리 합치기" 참고. cat 1-a 포함이면 Step 4 직후 스크린샷 1콜 + Read.
 
