@@ -662,46 +662,18 @@ mkdir -p "$PROJECT_ROOT/.claude"
 - 같은 카테고리 항목은 묶기 (예: `라벨/태그 9개`, `토큰 2개(bg-blue-weak, text-primary)`)
 
 ```
-✅ PASS (한 줄 — 항목 3개 이내)
+✅ PASS
 "검증 통과 (8.4s) — light path
  체크: dropdown 라벨/태그 9개 / 토큰 (bg-blue-weak, text-primary) / console 에러"
 
-✅ PASS (bullet — 4개 이상)
-"검증 통과 (12.1s) — light path
- 체크:
- - 라벨/태그 9개
- - 토큰: bg-blue-weak, text-primary, rounded-full
- - dropdown open/close 동작
- - active 상태 강조
- - console 에러"
-
-✅ PASS (1줄 — 단일 항목일 때)
-"검증 통과 (8.4s): /onboarding 진입 + GUID 입력 → /home 라우팅 정상"
-
-🔧 PASS after fix (2줄)
+🔧 PASS after fix
 "검증 1차 실패 → 수정 후 통과 (52s)
  수정: handleSubmit에서 saveToken 누락 → 추가"
 
-⏭️ SKIP (정상 skip — silent)
-사용자 채팅에 출력 없음. 코드 변경 없음 / wiring-only / 자동 흡수 케이스는 sentinel만 조용히 기록.
+⏭️ SKIP (정상) — silent. 사용자 채팅에 출력 없음.
+⏭️ SKIP (인프라 에러) — "검증 스킵: dev 서버 미기동 (`yarn dev` 후 재시도)"
 
-⏭️ SKIP (인프라 에러 — 보고)
-"검증 스킵: dev 서버 미기동 (`yarn dev` 후 재시도)"
-"검증 스킵: 9223 크롬 미응답 (검증용 크롬 띄워주세요)"
-"검증 스킵: 대규모 리팩터 — 수동 확인 권장"
-
-❌ ESCALATION
-"검증 실패. 2회 시도 후 막혔습니다.
-
-발견 문제:
-- /onboarding 클릭 후 URL이 /home으로 안 바뀜
-- console: 'Cannot read property token of undefined'
-
-시도한 수정:
-1. saveToken 호출 추가 → 동일 에러
-2. response.data?.accessToken 옵셔널 체이닝 → 동일 에러
-
-추측: API 응답 구조 예상과 다름. /auth/login 응답 직접 확인 필요해 보입니다."
+❌ ESCALATION — 발견 문제 / 시도한 수정 2건 요약 / 추측 root cause. 코드는 마지막 수정 유지.
 ```
 
 ## Workflow Summary
