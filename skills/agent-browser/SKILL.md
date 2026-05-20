@@ -11,7 +11,9 @@ agent-browser CLI 사용 기법 모음. **카테고리별로 패턴이 다르니
 
 핵심 원칙:
 - `--cdp 9223 + tab tN`으로 탭 명시 필수
-- 멀티스텝은 eval IIFE 1콜 (CLI 부팅 비용 누적 방지)
+- **Navigation-aware primitive 우선** — `batch` / `wait --url` / `wait --load` / `find <locator> <value> <action>` / `pushstate`. IIFE를 첫 도구로 꺼내기 전에 이걸로 표현 가능한지 먼저 점검 (아래 "Tool Selection Hierarchy" 참고)
+- **페이지 전환 없는** 멀티스텝은 eval IIFE 1콜 (같은 페이지 내 폼/모달/DOM 검사)
+- **페이지 전환을 동반하는** 멀티스텝은 `batch` + `wait --url`로 묶기 — IIFE 안에서 `location.href`/`reload`/navigation 트리거 click을 묶으면 CDP context 끊겨 재시도 turn 폭주 (아래 "Navigation Boundary" 참고)
 - React input은 setter+dispatchEvent (직접 `.value` 대입은 React가 안 감지)
 - **픽셀 단위 일치 판정은 안 함** (#DC2626 vs #DC2727, 16px vs 17px 같은 미세 비교)
 
