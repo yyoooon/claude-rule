@@ -239,11 +239,44 @@ IIFE 안에서 폴링 직접 짜야 하는 경우(같은 페이지 내 React 상
 
 ---
 
-## 카테고리 3 — 멀티스텝 IIFE (★ 가장 중요)
+## 카테고리 3 — 멀티스텝 (★ 가장 중요)
 
 5+ 단계 시나리오. **CLI 부팅 비용 누적 방지가 핵심.**
 
-### 패턴
+### 먼저 — 페이지 전환 있나?
+
+| 시나리오 | 도구 |
+|---|---|
+| **같은 페이지 내**만 (모달 열고 폼 입력 → submit → 모달 닫힘) | IIFE 1콜 |
+| **페이지 전환 포함** (form submit → /next-page → 새 페이지에서 검증) | **batch** ↔ IIFE 혼합 |
+| **순수 navigation 체인** (link click → page A → link click → page B) | batch only |
+
+페이지 전환 가로지르는 IIFE는 CDP race로 깨진다 — "Navigation Boundary" 섹션 참고. batch + wait로 갈아탈 것.
+
+### batch ↔ IIFE 혼합 예시
+
+폼 입력은 IIFE, navigation은 batch:
+
+```bash
+# step 1 — 같은 페이지 내 폼 채우기 (IIFE)
+agent-browser --cdp 9223 eval '
+(() => {
+  const input = document.querySelector("input[name=weight]");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(input, "60.5");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  return { filled: input.value };
+})()'
+
+# step 2 — submit → navigation → 다음 페이지 검증 (batch)
+agent-browser --cdp 9223 batch \
+  "find role button --name 'Save' click" \
+  "wait --url '**/record/summary'" \
+  "find text '저장 완료' wait" \
+  "get url"
+```
+
+### 같은 페이지 시나리오 IIFE 패턴
 
 1. **1-2회 eval로 구조 파악** — 폼/버튼 selector 덤프
 2. **전체 플로우 IIFE** — 클릭/대기/입력을 JS 한 덩어리로 브라우저에 주입
