@@ -602,7 +602,6 @@ mkdir -p "$PROJECT_ROOT/.claude"
 | 실수 | 방지 |
 |---|---|
 | **★ Navigation을 IIFE에 묶음** (실측 181s 폭주 사례) | navigation은 batch step으로 분리. `batch "<trigger>" "wait --url '**/dest'" "<verify>"`. IIFE 안에서 `location.href`/`reload`/router-click + `await sleep` + `return` 금지. |
-| **IIFE 안 setTimeout으로 React 리렌더 대기** | click → 새 view 검증이면 `batch + wait <selector>`로 분리. 임의 sleep은 느리고 취약. |
 | **풀 시퀀스 over-engineering** | Tier Selection으로 light path 진입. 한 줄 변경에 서브에이전트 풀 dispatch 금지. |
 | **잘못된 탭 캡처** | tab switch 후 IIFE 안에서 `location.pathname` 재검증. mismatch면 사용자 안내 + 종료 (자동 navigate 강제 X). |
 | **자체 브라우저 spawn** | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것. |
