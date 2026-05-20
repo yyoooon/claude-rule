@@ -364,31 +364,18 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
    - 동일 동작 리팩터 (조건문 순서 등)
    - domain.ts 변경 + 같은 diff에 대응 *.test.ts 수정 + UI 파일(*.tsx) 변경 없음 (TDD 시그널, unit test가 cover)
 
-2. [Dev 서버 URL 확인]
-   우선순위대로 PORT 결정:
-   1) 워크트리 로컬: `grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1`
-   2) 프로세스 감지: `lsof -i -P -n | grep LISTEN | grep node | head -1 | grep -oE ':\d+' | tr -d ':'`
-   3) 기본값: 3000
-   
+2. [PORT 결정]
    ```bash
    PORT=$(grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1)
    [ -z "$PORT" ] && PORT=$(lsof -i -P -n 2>/dev/null | grep LISTEN | grep node | head -1 | grep -oE ':\d+' | tr -d ':')
    [ -z "$PORT" ] && PORT=3000
    ```
-   PORT 확정 후 다음 단계.
 
-3. [사용자 Chrome (9223) 살아있는지 확인 — 필수]
-   curl -s http://127.0.0.1:9223/json/version
-   - 응답 X → 즉시 status: FAIL + reason: "사용자 Chrome on 9223 not running. 검증은 사용자 띄운 크롬에서만 실시." → 종료.
-   - 자체 브라우저 spawn 금지. agent-browser open만 단독 호출하지 말 것 (--cdp 없으면 자체 Chrome 띄움).
-   - 이후 모든 agent-browser 호출에 `--cdp 9223` 명시.
+3. [Chrome 9223 확인]
+   `curl -s http://127.0.0.1:9223/json/version` — 응답 X면 FAIL 종료. 모든 호출 `--cdp 9223` 명시. 자체 spawn 금지.
 
-4. [타겟 탭 잡기 + URL Mismatch 가드]
-   agent-browser --cdp 9223 tab list
-   - 출력에서 expected URL (`http://localhost:PORT/<route>`) 매칭 탭의 stable id (예: t2) 찾기
-   - 매칭 탭 있음 → agent-browser --cdp 9223 tab t<N>
-   - 매칭 탭 없음 → agent-browser --cdp 9223 open http://localhost:PORT/route (--cdp로 사용자 Chrome에 새 탭 추가)
-   - **사용자가 검증 도중 다른 페이지로 navigate할 수 있음.** 다음 eval 안에서 location.pathname을 expected와 다시 검증하고, mismatch면 즉시 reason: "tab navigated away — 사용자가 검증 대상 페이지에서 벗어남"로 SKIP 리턴.
+4. [타겟 탭 + URL 가드]
+   `tab list`에서 `http://localhost:PORT/<route>` 매칭 탭 stable id (t<N>) 찾아 switch. 없으면 `batch "open http://localhost:PORT/route" "wait --load networkidle"`. eval 안에서 `location.pathname` 재검증, mismatch면 SKIP "tab navigated away".
 
 5-7. [버퍼 클리어 + 동작 시뮬레이션] — 변경 성격별 패턴 선택
 
