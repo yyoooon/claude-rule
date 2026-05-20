@@ -114,6 +114,8 @@ webview_flow({
 | `MULTIPLE_WEBVIEWS` 에러 → 재호출 왕복 | `webview_connect` 인자 누락 | `{ socketIndex: 0 }` 명시 |
 | `goto` 후 화면 그대로 / waitFor timeout | Next.js router가 pushState 못 받음 | `evaluate: location.href = ...` |
 | "USB 연결해주세요"부터 묻고 끝 | `adb devices` 먼저 안 봄 | 항상 `adb devices`부터 |
+| 검증이 느림 ("왜 이렇게 오래걸려") | screenshot/fixture Read/큰 sleep 디폴트 사용 | Speed Modes 디폴트 — screenshot·정독·sleep 생략, 한 evaluate에 체이닝 |
+| `goto` 직후 `sleep 2500ms` 같은 큰 wait | 최악 케이스 기준 고정 sleep | `waitFor: { selector: ... }`로 실제 필요 시간만 |
 
 ## Quick Reference
 
