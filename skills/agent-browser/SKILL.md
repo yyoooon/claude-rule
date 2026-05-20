@@ -408,40 +408,29 @@ cat set에 따라 한 IIFE 안에 묶음:
 
 ### 예시 — cat 1-b + 3 + 4 동시 수행
 
-폼 입력 변경 + 토큰 변경 + API 연동 변경이 한 PR에 있을 때:
+폼 입력 + 토큰 변경 + API 연동이 한 PR에 있을 때:
 
 ```js
 (async () => {
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const traces = [];
-  const trace = (label, extra={}) => traces.push({ step: traces.length+1, label, ...extra });
-
-  // === cat 3: 멀티스텝 ===
-  findBtn("저장").click();
-  trace("clicked 저장");
+  // cat 3: 멀티스텝 — 모달 열고 입력
+  findBtn("저장")?.click();
   const dialog = await waitFor(() => document.querySelector("[role=dialog]"));
-  if (!dialog) return { ok: false, traces };
-  trace("modal opened");
-  const input = dialog.querySelector("input[inputmode=decimal]");
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-  setter.call(input, "60.5");
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  trace("input filled");
+  if (!dialog) return { ok: false, reason: "modal not opened" };
+  setReactValue(dialog.querySelector("input[inputmode=decimal]"), "60.5");
 
-  // === cat 1-b: 토큰 적용 확인 (같이) ===
+  // cat 1-b: 토큰 적용 확인 (같이)
   const card = document.querySelector("[data-slot=card]");
-  const tokenCheck = {
-    hasClass: card.classList.contains("bg-blue-weak"),
-    bg: getComputedStyle(card).backgroundColor,
-    rect: card.getBoundingClientRect().toJSON(),
+  return {
+    ok: true,
+    tokenCheck: {
+      hasClass: card.classList.contains("bg-blue-weak"),
+      bg: getComputedStyle(card).backgroundColor,
+    },
   };
-
-  // === cat 4: console/network은 IIFE 끝나고 외부 CLI로 ===
-  return { ok: true, traces, tokenCheck };
 })()
 ```
 
-→ 그 다음 외부에서 `console --json` + `network requests --json` 2콜로 cat 4 처리. cat 1-a 필요하면 `screenshot --output /tmp/v.png` 추가로 1콜.
+→ 외부에서 `console --json` + `network requests --status 4xx --json` 2콜로 cat 4 처리. cat 1-a 필요하면 `screenshot --output /tmp/v.png` 추가.
 
 ---
 
