@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Use when running agent-browser CLI for desktop Chrome automation, especially multi-step UI flows. Trigger words — "agent-browser로", "9223 크롬으로", "띄워진 크롬으로 …", "기존 크롬에 붙어서", or any case where multi-step browser automation (5+ click/wait) is requested via agent-browser. Skip for: Playwright MCP, webview-test MCP (Android WebView), single screenshot/single click tasks (use raw agent-browser commands).
+description: MANDATORY before ANY agent-browser CLI call when the user explicitly names agent-browser/9223 — even single-shot fetches, screenshots, or network checks. Trigger words — "agent-browser로", "agent-browser 써서", "브라우저 에이전트로/써서", "9223 크롬으로", "9223으로 확인", "띄워진 크롬으로 …", "기존 크롬에 붙어서". Also use for multi-step browser automation (5+ click/wait) without explicit trigger. Skip for: Playwright MCP, webview-test MCP (Android WebView). When user did NOT mention agent-browser/9223 AND task is single screenshot/click, raw CLI is OK.
 ---
 
 # agent-browser (도구 사용 카탈로그)
