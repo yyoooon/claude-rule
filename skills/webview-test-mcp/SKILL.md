@@ -73,6 +73,39 @@ webview_flow({
 | Next.js / React SPA 내부 라우트 | `evaluate: location.href = ...` |
 | 정적 HTML / 앱 외부 URL / 첫 진입 | `goto` OK |
 
+## Speed Modes — 기본은 빠른 모드, 정밀은 명시 옵트인
+
+### 기본 모드 (디폴트)
+
+"X 동작하는지 봐줘" 톤 요청은 **얇게**:
+
+1. 한 `webview_evaluate` (또는 `webview_flow`) 안에 클릭/대기/검증 체이닝. 단계마다 별도 콜 금지.
+2. 검증은 "동작하는지" 수준만 — overlay/요소 존재 여부 + 핵심 1-2개 필드. 픽셀 정밀 geometry / `getBoundingClientRect` / computed style 디테일 생략.
+3. **fixture/handler 사전 정독 금지** — e2e spec, `data-task-id` 같은 단서로 충분하면 핸들러 수백 줄 통째 `Read` 금지. `webview_evaluate`로 DOM/state 직접 묻는 게 빠름.
+4. Task 분할 자제 — 시나리오 단위 1-2개. 클릭 하나당 task 쪼개지 말 것.
+5. `webview_screenshot` 디폴트 생략 — computed style / 존재 여부로 끝나면 안 찍음.
+
+### 정밀 모드 (명시 옵트인)
+
+사용자 메시지에 다음 신호가 있을 때만 깊이:
+
+- **"세세하게" / "꼼꼼하게" / "정밀하게" / "픽셀 단위" / "위치 정확한지"**
+- **"스크린샷 보여줘" / "시각적으로 확인"**
+- 회귀 테스트 / QA / 릴리즈 검증 맥락 명시
+
+이 경우에만 `getBoundingClientRect`, `webview_screenshot`, e2e spec 수준 geometry 추가.
+
+### 시간 비용 (왜 디폴트가 얇은지)
+
+| 행위 | CDP 비용 |
+|---|---|
+| `webview_evaluate` 1콜 | 50-200ms |
+| `webview_screenshot` 1콜 | **4-5초** (CDP timeout 누적) |
+| `goto` 후 `sleep 2500ms` | 2500ms 고정 |
+| `waitFor` selector | 실제 필요 시간만 (200-400ms 평균) |
+
+→ 디폴트 검증에서 screenshot · 큰 sleep은 누적 지연의 주범. 명시 신호 없으면 사용 금지.
+
 ## Common Mistakes
 
 | 증상 | 원인 | 고침 |
