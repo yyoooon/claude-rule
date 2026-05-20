@@ -49,6 +49,80 @@ agent-browser --cdp 9223 eval "location.href"  # 검증
 
 ---
 
+## Tool Selection Hierarchy (이 순서로 먼저 점검)
+
+작업을 IIFE로 짜기 전에 항상 위에서 아래로 매칭되는지 확인. **위로 갈수록 빠르고, LLM turn도 더 적게 먹는다.**
+
+| 우선순위 | 패턴 | 언제 |
+|---|---|---|
+| 1 | `find <locator> <value> <action>` | "X 텍스트 버튼 클릭" 같은 단일 액션. snapshot도 IIFE도 불필요 |
+| 2 | `batch "cmd1" "cmd2" ..."` | 여러 step을 **CLI 내부에서** 순차 실행. LLM turn 1번, CDP attach 1번. navigation 동반해도 step 사이에 `wait --url`/`wait --load` 끼우면 안전 |
+| 3 | `wait --url '**/foo'` / `wait --load networkidle` / `wait --text "..."` | hard sleep 대체. SPA navigation 완료를 정확히 감지 → CDP race 안 남 |
+| 4 | `pushstate <url>` | Next.js `next.router.push` 자동 감지 SPA navigation. `location.href = ...`보다 안전 (RSC fetch 트리거됨) |
+| 5 | eval IIFE | **같은 페이지 내** 다단계 DOM 조작/검사. `setReactValue` 같이 CLI primitive로 표현 불가능한 케이스 |
+| 6 | snapshot + ref | 페이지 구조를 모를 때 1회 정찰. 그 다음은 1-4 중 하나로 |
+
+### 결정 룰
+
+- **단일 click/fill** → `find text "..." click` / `find label "..." fill "..."`
+- **click → 페이지 이동 → 새 페이지 검증** → `batch "find text '...' click" "wait --url '**/dest'" "get url"` (3 step 1 turn)
+- **click → 모달/시트 등장 → fill** → 같은 페이지 내라 IIFE OK
+- **폼 입력 → submit → 페이지 이동** → IIFE로 입력까지 + `batch`로 submit + wait
+- **navigation 직접 트리거** → `pushstate /target` 또는 `batch "eval 'router 트리거'" "wait --url '**/target'"`
+
+IIFE는 "**같은 페이지 내**에서만 묶는 도구"로 본다. navigation 경계를 가로지르는 순간 batch로 갈아탄다.
+
+---
+
+## Navigation Boundary (★ CDP race 방지)
+
+CDP `Runtime.evaluate`는 응답이 돌아오기 전 page navigation이 일어나면 execution context가 무효화돼 `"Inspected target navigated or closed"` 에러 발생. **재시도 turn 누적 = 시간 폭주의 주범.**
+
+### IIFE 안에서 절대 묶지 말 것
+
+다음 작업은 IIFE 내부에서 호출하지 말 것. **모두 batch step으로 분리:**
+
+- `location.href = "..."` / `location.assign(...)` / `location.replace(...)`
+- `location.reload()`
+- `history.pushState(...)` 직후 라우터가 트리거하는 RSC fetch
+- `<a href>` / `router.push`/`router.replace` 트리거하는 `.click()`
+- `<form>` submit이 navigation을 일으키는 경우
+
+### 올바른 패턴 (batch + wait)
+
+```bash
+# nav 트리거 → 완료 대기 → 검증
+agent-browser --cdp 9223 batch \
+  "find text 'View Sleep HRV Details' click" \
+  "wait --url '**/tracker/energy'" \
+  "get url"
+```
+
+```bash
+# 직접 SPA navigation
+agent-browser --cdp 9223 batch \
+  "pushstate /tracker/energy" \
+  "wait --load networkidle" \
+  "find text 'Energy Score' wait"
+```
+
+```bash
+# reload 후 검증 (cross-route 진입, scenario state 변경 등)
+agent-browser --cdp 9223 batch \
+  "eval 'sessionStorage.setItem(\"key\", \"value\")'" \
+  "reload" \
+  "wait --load networkidle" \
+  "eval '({ ok: location.pathname === \"/expected\" })'"
+```
+
+batch 안의 `wait --url`/`wait --load`는 CDP가 새 context로 reattach될 때까지 정확히 block. 외부에서 `sleep + tab list` 폴링하는 패턴보다 훨씬 빠르고 안전.
+
+### 안 되는 케이스 (IIFE로 가야 하는)
+
+같은 페이지 내 폼 입력 → 모달 등장 → 입력 → submit 같은 시나리오는 navigation이 없으므로 그대로 IIFE 유지. batch는 step 사이에 React 상태/CSS-in-JS hydration 같은 정밀 폴링이 필요한 케이스는 약함.
+
+---
+
 ## 카테고리 1-a — 시각 sanity (스크린샷 1장)
 
 "변경이 의도대로 화면에 반영됐나" 매크로 확인.
