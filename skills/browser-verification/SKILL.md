@@ -478,68 +478,32 @@ network_errors: []
 | Auth 필요 + 토큰 없음 | SKIP + reason → 사용자 노티. |
 | Diff 너무 큼 (대규모 리팩터) | SKIP + reason "manual review recommended" → 사용자 안내. |
 
-## Elapsed Time Measurement (Level 2)
+## Elapsed Time Measurement
 
-매 검증 사이클의 wall-clock 시간을 측정해서 결과 보고에 포함한다. 추정 대신 실측. 이번 사이클이 5초였는지 40초였는지 사용자가 즉시 알 수 있고, 누적되면 스킬 개선 베이스라인이 자동으로 쌓인다.
+매 사이클 wall-clock 측정 + 보고. 추정 X.
 
-### 측정 패턴
+### 측정
 
-검증 사이클 진입 시 (Tier Selection 직후) 시작 시각을 stash하고, sentinel 기록 직전에 종료 시각과의 차이를 계산한다.
+Tier Selection 직후 stash, sentinel 기록 시 차이 계산:
 
 ```bash
-# 진입 시 (macOS/Linux 공용 — date +%s%3N은 macOS에서 %N 미지원으로 "N" 리터럴이 붙어 산술 실패)
 T0=$(python3 -c "import time; print(int(time.time()*1000))")
-
-# ... 모든 agent-browser 호출, eval, console 체크 등 ...
-
-# 종료 시 (sentinel 기록과 함께 같은 turn에)
+# ... 모든 호출 ...
 T1=$(python3 -c "import time; print(int(time.time()*1000))"); ELAPSED_MS=$((T1-T0))
-{ git diff HEAD; ...; } | sha256sum | awk '{print $1}' > .claude/.last-verified-hash
 echo "${ELAPSED_MS}" > .claude/.verify-elapsed-ms
 ```
 
-- `.verify-elapsed-ms`는 매 사이클 덮어씌움. 누적 트렌드 추적 원하면 `>>` 로 append + timestamp 같이 기록
-- Light path와 Full path 모두 같은 패턴 적용
+보고는 1자리 소수점: `✅ PASS (8.4s) — light path`.
 
-### 보고 형식
+### Baseline + 초과 시 자동 알림
 
-사용자 보고 1줄에 elapsed 포함:
+| 경로 | 목표 | red flag | 알림 메시지 |
+|---|---|---|---|
+| Light | < 15s | > 20s | "step 압축 누락 또는 reload race 의심" |
+| Full (no fix) | < 60s | > 90s | "Brief에서 step 분리 호출 의심" |
+| Full (1 fix loop) | < 120s | > 180s | "fix loop 자체 점검 필요" |
 
-```
-✅ PASS (8.4s) — light path
-🔧 PASS after fix (52s) — full path, 1 fix
-⏭️ SKIP (1.2s)
-```
-
-자릿수는 초 단위 소수점 1자리 (`$(echo "scale=1; $ELAPSED_MS/1000" | bc)s`).
-
-### 기대 baseline
-
-| 경로 | 목표 | red flag |
-|---|---|---|
-| Light | < 15s | 20s+ → step 압축 누락 의심 |
-| Full (no fix) | < 60s | 90s+ → Brief에서 step 분리 호출 의심 |
-| Full (1 fix loop) | < 120s | 180s+ → systematic-debugging 호출 자체 시간 점검 |
-
-베이스라인을 자주 초과하면 스킬 본문 재점검 신호.
-
-### Baseline 초과 시 자동 알림 (필수)
-
-elapsed가 위 표의 red flag 기준을 초과하면, **PASS 보고 다음 줄에 의심 원인을 자동으로 1줄 덧붙인다.** 사용자가 매번 시간 표시를 신경 쓰지 않아도 됨.
-
-판정 로직:
-- Light path elapsed > 20s → `⚠️ baseline(15s) 초과 — step 압축 누락 또는 reload race 의심`
-- Full path (no fix) elapsed > 90s → `⚠️ baseline(60s) 초과 — Brief에서 step 분리 호출 의심`
-- Full path (1 fix loop) elapsed > 180s → `⚠️ baseline(120s) 초과 — fix loop 자체 점검 필요`
-
-예시:
-```
-✅ PASS (38s) — light path
-⚠️ baseline(15s) 초과 — step 압축 누락 또는 reload race 의심. 다음 사이클 chaining 강화 검토.
-```
-
-- baseline 안쪽이면 알림 생략 (정상이니까 침묵)
-- 자동 수정은 X. 시그널만 줌. 사용자가 "그럼 스킬 손봐줘" 판단해야 함
+red flag 초과 시 PASS 보고 다음 줄에 `⚠️ baseline(Xs) 초과 — <메시지>` 1줄 자동 덧붙임. 안쪽이면 침묵.
 
 ## Proactive Status Communication
 
