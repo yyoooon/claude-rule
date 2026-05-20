@@ -535,11 +535,14 @@ cat set에 따라 한 IIFE 안에 묶음:
 
 ## 안 쓰는 패턴
 
-- ❌ `agent-browser click @e1 && wait 500 && click @e2` 식 체이닝 — CLI 부팅 누적
+- ❌ `agent-browser click @e1 && wait 500 && click @e2` 식 shell 체이닝 — `batch "click @e1" "wait 500" "click @e2"`로 묶을 것 (CLI 부팅 1회로)
 - ❌ `tab 2` (positional integer)
 - ❌ `input.value = "..."` (React 안 감지)
-- ❌ snapshot 5번 이상 반복 — 멈추고 IIFE로
+- ❌ snapshot 5번 이상 반복 — 멈추고 `find` 또는 IIFE로
 - ❌ 모달/시트 띄운 직후 CLI 종료 + 별도 eval 재진입 — 사용자 화면에 "모달 뜬 채 멈춤" 노출
-- ❌ 모달/페이지 전환 후 고정 `sleep(1000ms+)` — waitFor 폴링이 200-400ms면 충분
+- ❌ 모달/페이지 전환 후 고정 `sleep(1000ms+)` — `wait --url`/`wait --text`/`wait <sel>`이 navigation 완료를 정확히 감지
+- ❌ **IIFE 안에서 `location.href`/`location.reload()`/router 트리거 click** — CDP context 끊김 → "Inspected target navigated or closed" → 재시도 turn 폭주. `batch "..." "wait --url '**/...'" "..."`로 분리.
+- ❌ **IIFE 안에서 `location.href = "/"` 후 `await sleep(1500); return ...`** — return이 CDP에 도달하기 전 nav 완료되며 끊김. 같은 함정.
+- ❌ **navigation 후 외부에서 `sleep + tab list`로 폴링** — `wait --url '**/dest'` 1콜로 끝남
 - ❌ 픽셀 단위 일치 판정 (1-2px, 색 hex 미세 비교)
 - ❌ `agent-browser viewport ...` — 사용자가 띄운 탭 크기 변경 금지
