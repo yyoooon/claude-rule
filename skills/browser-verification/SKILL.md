@@ -141,28 +141,58 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 
 **LLM thinking turn(3–5초)이 진짜 병목.** Light path도 step을 별도 Bash 호출로 쪼개면 각 사이에 thinking turn이 끼어 40초+ 걸린다.
 
-**원칙: Step 2-4를 1–2개 Bash 호출에 chaining으로 묶는다.**
+**원칙 1 — agent-browser navigation-aware primitive 우선:** IIFE를 첫 도구로 꺼내지 말고 `agent-browser` 스킬의 "Tool Selection Hierarchy" 순서로 매칭. 특히 navigation 동반 검증은 **`batch + wait --url` 1콜**이 거의 항상 정답.
+
+**원칙 2 — 1–2 Bash 호출에 chaining/batch로 묶는다.**
+
+#### 시나리오별 권장 패턴
+
+**A. Navigation 동반 검증 (router.push, link click, 페이지 이동)**
 
 ```bash
-# 권장 패턴 (Bash 1콜 = LLM 1 turn)
-agent-browser --cdp 9223 tab list 2>&1 | head -5 && \
-agent-browser --cdp 9223 tab t<N> >/dev/null && \
-sleep 0.5 && \
-agent-browser --cdp 9223 eval '<IIFE>' && \
+agent-browser --cdp 9223 tab t<N> >/dev/null
+agent-browser --cdp 9223 batch \
+  "find text 'View Sleep HRV Details' click" \
+  "wait --url '**/tracker/energy'" \
+  "get url"
+```
+
+→ CDP race 0, LLM turn 2 (tab switch + batch). 외부 `sleep + tab list 폴링` 패턴 대비 ~10배 빠름.
+
+**B. 같은 페이지 내 DOM 검증 (토큰, attribute, textContent)**
+
+```bash
+agent-browser --cdp 9223 tab t<N> >/dev/null
+agent-browser --cdp 9223 eval '<IIFE: 같은 페이지 내 검사만>'
 agent-browser --cdp 9223 console --json 2>&1 | python3 -c \
   "import json,sys; d=json.load(sys.stdin); errs=[m for m in d['data']['messages'] if m['type']=='error']; print(f'errors:{len(errs)}'); print(errs[0]['text'][:200] if errs else '')"
 ```
 
-- tab list 결과를 인간 눈으로 확인할 필요 없으면 head로 잘라서 같은 turn에 즉시 다음 호출
+→ tab switch와 eval은 **별도 Bash call** (`&&`로 묶으면 탭 컨텍스트 소실됨, Common Mistakes 참고).
+
+**C. State 변경 + reload + 검증 (sessionStorage/localStorage 조작, scenario step 강제 등)**
+
+```bash
+agent-browser --cdp 9223 batch \
+  "eval 'sessionStorage.setItem(\"scenario_step\", JSON.stringify(\"RUN_PROGRAM\"))'" \
+  "reload" \
+  "wait --load networkidle" \
+  "find text 'View Sleep HRV Details' click" \
+  "wait --url '**/tracker/energy'" \
+  "get url"
+```
+
+→ batch 안의 `reload` + `wait --load`로 CDP race 회피. IIFE 안에서 `location.reload(); await sleep(...)` 패턴 절대 금지.
+
 - console error는 **count + 첫 메시지 1줄**을 1콜에 뽑음 (두 번 호출 X)
-- `sleep 0.5` 또는 `sleep 1`을 reload 전후에 넣어 race 방지 (재시도 turn 자체를 없앰)
-- 결과 받고 PASS면 sentinel 기록 1콜 추가 → 총 2 turn 이내 완료 (10초 이하 가능)
+- 결과 받고 PASS면 sentinel 기록 1콜 추가 → 총 3 turn 이내 완료 (10초 이하 가능)
 
 **안티패턴 (40초+ 걸리는 케이스)**:
 - step별 분리 호출: tab list → (thinking) → tab switch → (thinking) → eval → (thinking) → console → (thinking) → ...
 - console error 갯수 → (thinking) → error 내용 봤어야 → 추가 호출
-- reload 후 짧은 sleep 없이 즉시 eval → CDP error → 재시도 turn
+- **IIFE 안에서 `location.href = ...` / `location.reload()` + `await sleep`** → CDP context 끊김 → tab list 재확인 + 재attach + 재eval 사이클이 매 시도마다 ~15초씩 누적 (실측: 181s 사이클 사례)
 - HMR 반영된 page-scoped 변경에도 무조건 reload → CDP disconnect → 재시도 turn 낭비
+- navigation 후 외부 `sleep + agent-browser tab list` 폴링으로 URL 확인 → `wait --url '**/dest'` 1콜로 끝남
 
 ### Full Path 진입 조건
 
