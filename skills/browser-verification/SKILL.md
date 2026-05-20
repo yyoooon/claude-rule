@@ -82,6 +82,7 @@ Stop hook이 다음 stderr 메시지를 주입하면 본 스킬이 자동 발화
 
 - 기존 컴포넌트에 `onClick` prop 추가 (컴포넌트는 이미 onClick 지원하고, 같은 prop이 다른 페이지에서 동작 검증됨)
 - 라우트 경로 문자열 오타 수정 (`/heart-rate` → `/heartrate`)
+- **`router.push('/A')` → `router.push('/B')` 같은 라우트 인자 string 교체** — 핸들러 로직 동일, 목적지 경로만 다름. 다른 페이지에서 `router.push` 패턴이 이미 동작 검증된 코드베이스라면 검증 비용 > 사용자 1클릭 비용.
 - `variant="default"` → `variant="ghost"` 같은 prop 값 교체
 - Tailwind class 문자열 교체 (`bg-gray-100` → `bg-gray-200`)
 
