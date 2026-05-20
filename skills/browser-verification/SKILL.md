@@ -241,17 +241,34 @@ PORT=$(grep -s 'PORT=' .env.local | cut -d= -f2 | tr -d ' ' | head -1)
 - `src/components/...` → 컴포넌트가 어디서 import되는지 grep으로 1차 매핑 후 가장 가능성 큰 라우트
 - 추론 실패 시 → Full Path로 escalate
 
-### Step 2 — Chrome 9223 / Tab 확인 (1콜)
+### Step 2 — Chrome 9223 / Tab 확인 (첫 검증만 1콜, 이후 0콜)
 
-```bash
-agent-browser --cdp 9223 tab list 2>&1
-```
+**핵심 룰: 매칭 기준은 PORT, URL 아님.** `.env.local`의 PORT와 일치하는 탭이 그 worktree의 검증 탭. expected URL은 그 탭 안에서 `open`으로 이동만 시키면 됨.
 
-- 9223 응답 없음 → 즉시 사용자에게 "검증용 크롬 9223으로 띄워주세요" 안내 + sentinel 기록 + 종료
-- 출력에서 expected URL과 **정확히 일치**하는 tab id (예: t2) 추출
-- **매칭 탭 없음** → expected URL로 새 탭 열기 (`agent-browser --cdp 9223 open http://localhost:<PORT>/<route>`)
-- **매칭 탭 있지만 사용자가 다른 탭으로 navigate했을 가능성** → tab switch 후 location.pathname 검증 (Step 3 eval 안에서)
-- ⚠️ **유사 URL 다른 탭으로 자동 switch 금지**: 예) expected가 `/record`인데 `/tracker/heartrate` 탭에 같은 컴포넌트가 떠 있더라도, 진입 경로/상태가 다르면 검증 동치 X. expected와 정확히 일치하지 않으면 새 탭 열거나 사용자에게 안내.
+**판정 흐름:**
+
+1. **같은 대화에서 이미 검증 탭 id를 알고 있나?** (이전 검증에서 찾아둔 t<N>)
+   - 있음 → 그 t<N> 그대로 재사용. `tab list` 생략.
+   - 없음 → 아래 cold start.
+
+2. **Cold start (대화 첫 검증):**
+   ```bash
+   agent-browser --cdp 9223 tab list 2>&1
+   ```
+   - 9223 응답 없음 → "검증용 크롬 9223으로 띄워주세요" 안내 + sentinel + 종료.
+   - 출력에서 `http://localhost:<PORT>/...` 매칭 탭 1개 골라서 id(t<N>) 메모리에 기억. URL 경로는 아무거나 OK (`/`, `/record/anything`...).
+   - PORT 매칭 탭 자체가 없음 → `agent-browser --cdp 9223 tab new http://localhost:<PORT>/<route>` 또는 사용자에게 "검증용 :PORT 탭 열어주세요" 안내.
+
+3. **검증 탭 안에서 expected URL과 다르면 이동:**
+   ```bash
+   agent-browser --cdp 9223 tab t<N>          # 별도 콜 (&& 체인 X)
+   agent-browser --cdp 9223 open http://localhost:<PORT>/<expectedPath>
+   ```
+   - 같은 PORT 안에서 `/A` → `/B` 페이지 이동은 **자유**. 사용자 작업 흐름 깨는 게 아니라 그게 검증 흐름.
+
+⚠️ **다른 PORT 탭으로 자동 점프 금지**: worktree a(:3001) 탭을 worktree b(:3002) 검증에 끌어다 쓰면 안 됨. 사용자의 다른 worktree 작업을 깸. 반드시 본인 PORT 탭만 사용.
+
+> **expected URL**: 검증할 페이지 주소. 변경된 파일 경로(예: `src/app/record/blood-sugar/...`)에서 라우트(`/record/blood-sugar`)를 추론해 정함.
 
 ### Step 2.5 — 실행 전 커밋 (필수)
 
