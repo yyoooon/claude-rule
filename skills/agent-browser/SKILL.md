@@ -147,52 +147,24 @@ export AGENT_BROWSER_SCREENSHOT_QUALITY=70
 
 ## 카테고리 1-b — 렌더 원인 분석 (computed style + rect)
 
-"왜 좁아 보이지?" / "왜 흐릿하지?" 의문을 핀포인트로 잡는 디버깅.
+"왜 좁아 보이지?" / "왜 흐릿하지?" 디버깅. **부모/자식 같이** 뽑고 `getBoundingClientRect` 포함 (declared padding과 실제 렌더가 box-sizing/flex shrink/min-width로 다른 경우 흔함).
 
 ```bash
 agent-browser --cdp 9223 eval '
 (() => {
-  const inspect = (sel, label) => {
-    const el = document.querySelector(sel);
-    if (!el) return { label, error: "not found" };
-    const cs = getComputedStyle(el);
-    const r = el.getBoundingClientRect();
-    return {
-      label,
-      rect: { w: Math.round(r.width), h: Math.round(r.height) },
-      color: cs.color,
-      background: cs.backgroundColor,
-      font: `${cs.fontSize}/${cs.lineHeight} ${cs.fontWeight}`,
-      padding: cs.padding,
-      gap: cs.gap,
-      opacity: cs.opacity,
-    };
+  const inspect = (sel) => {
+    const el = document.querySelector(sel); if (!el) return null;
+    const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+    return { sel, w: Math.round(r.width), h: Math.round(r.height),
+      bg: cs.backgroundColor, color: cs.color, padding: cs.padding, opacity: cs.opacity };
   };
-  return [
-    inspect("[data-slot=card]", "card"),
-    inspect("[data-slot=card] h3", "title"),
-  ];
-})()
-'
+  return [inspect("[data-slot=card]"), inspect("[data-slot=card] h3")];
+})()'
 ```
 
-**팁:**
-- **부모/자식 같이** 뽑기 (`['.parent', '.child']`) — opacity 곱연산/padding 합산 추적
-- **`getBoundingClientRect` 반드시 포함** — declared padding과 실제 렌더 크기가 다른 경우 흔함 (box-sizing, flex shrink, min-width 충돌)
-- 4방향 따로 봐야 할 땐 `cs.paddingLeft` 등 분리
+**유용한 케이스**: 부모-자식 opacity 곱연산 / 중첩 padding 합산 / transform·scale 실 사이즈 vs 시각 사이즈. 눈으로 못 잡음.
 
-**눈으로 못 잡는 케이스 (이때만 유용):**
-
-| 케이스 | 왜 눈으로 못 잡나 |
-|---|---|
-| 부모-자식 opacity 곱연산 (50%×50%=25%) | "좀 흐릿한가?" 수준 |
-| 중첩 padding 합산 (outer + inner) | "어디서 좁아진지" 불명 |
-| transform/scale 적용 시 실 사이즈 vs 시각 사이즈 | 사람 눈엔 같이 보임 |
-
-**도구 한계:**
-- `cs.color`는 `rgb(...)` 반환 — hex 비교 시 변환 필요
-- `padding`/`gap`는 shorthand — 방향별 비교 시 각자 query
-- CSS 변수는 resolved 값으로만 — 토큰 이름 일치는 못 봄
+**한계**: `cs.color`는 `rgb(...)` (hex 비교 시 변환), shorthand padding/gap은 방향별 분리 query, CSS 변수는 resolved 값 (토큰 이름 일치는 못 봄).
 
 ---
 
