@@ -215,29 +215,17 @@ diff: src/app/record/_components/WeightForm.tsx + src/styles/tokens.css
   3. 스크린샷 1콜 + Read (cat 1-a)
 ```
 
-## 검증 계획 사전 공유 (필수)
+## 검증 계획 공지 (사후 보고, 승인 X)
 
-Tier + Category Selection이 끝나면 **eval 실행 전에 반드시 사용자에게 검증 계획을 보여주고 진행 여부를 확인**한다.
+Tier + Category Selection이 끝나면 **승인 받지 말고 즉시 eval 실행**. 사용자에게는 한 줄로 무엇을 검증하는지 알리고 바로 진행한다.
 
 ```
-검증 계획:
-- 경로: Light path / Full path
-- 대상 URL: /xxx
-- 검증 항목:
-  - [cat 2] 버튼 클릭 → 상태 변경 확인
-  - [cat 4] console 에러 0건 확인
-  - (항목별로 구체적으로 — "console 에러 확인" X, "날짜 클릭 후 selectedDate 변경 확인" O)
-- IIFE 흐름 (한 번에 실행할 단계 순서):
-  1. 현재 선택 날짜 캡처
-  2. 5/20 클릭
-  3. 500ms 대기
-  4. 선택 날짜 재확인
-  5. console 에러 체크
+Light path 진입 (5–10초 예상) — /record에서 차트 SVG 속성 + console 에러 체크
 ```
 
-사용자가 "진행해" / "응" / "ㅇㅇ" 등 승인하면 실행. 이 단계를 건너뛰고 eval을 먼저 날리는 것은 금지.
+**금지**: "진행할까요?" / "검증 계획: ..." 같은 승인 대기 패턴. 사용자가 "묻지 말고 자동 검증" 룰을 명시했으므로, eval을 먼저 날리고 결과만 보고한다.
 
-**예외 (계획 공유 생략 가능):**
+**예외 (알림 자체도 생략):**
 - Wiring-Only SKIP 케이스 (sentinel만 기록하고 끝)
 - 코드 변경 없음 케이스
 
