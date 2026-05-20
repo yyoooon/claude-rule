@@ -725,23 +725,15 @@ mkdir -p "$PROJECT_ROOT/.claude"
 9. 최종 결과 보고
 ```
 
-## Common Mistakes
+## Common Mistakes (검증 프로토콜 관점)
 
-| 실수 | 발생 패턴 | 방지 |
-|---|---|---|
-| 픽셀/시안 일치 판정 | `computedStyle`을 뽑아 padding/color를 Figma와 px 단위 일치 비교 | auto-verify는 동작/에러만. 시각 디버깅은 agent-browser 카테고리 1 수동 사용. |
-| **뷰포트 변경** | `agent-browser viewport ...` 호출해서 사용자가 띄운 창 크기를 멋대로 바꿈 | 절대 viewport 호출 금지. 사용자가 띄운 탭 크기 그대로 사용. |
-| 메인 컨텍스트 오염 | Full Path에서 메인 Claude가 직접 agent-browser 호출 → 출력 누적 | Full path는 항상 서브에이전트로 dispatch. Light path는 메인 직접 OK 단, eval 결과를 50줄 이내로 압축. |
-| **잘못된 탭 캡처** | 사용자가 검증 중에 다른 페이지로 navigate한 사이에 우리는 t<N>으로 잘못된 화면 캡처 | tab switch 후 항상 eval 안에서 `location.pathname`을 expected와 재검증. mismatch면 즉시 사용자 안내 + 종료 (자동 navigate 강제 X — 사용자 작업 흐름 침범). |
-| **풀 시퀀스 over-engineering** | 차트 SVG 한 줄 시각 수정에도 서브에이전트 30–60초 풀 dispatch | Verification Tier Selection으로 light path 진입. 변경 영향도에 맞게 검증 비용 분배. |
-| **불필요한 reload** | `_components/`·`_lib/` 등 HMR 반영된 변경에도 무조건 reload → CDP disconnect → 재시도 turn | page-scoped 변경은 reload 생략. middleware·SSR·초기 마운트 검증에만 reload. |
-| 페이지 stale (서버 로직) | middleware·route handler 변경 후 reload 없이 eval → 변경 미반영 | 서버 로직 변경 시에는 반드시 reload + sleep 1500ms. |
-| **Navigation을 IIFE에 묶음 (★ 최대 시간 낭비)** | IIFE 안에서 `location.href=...` / `location.reload()` / router 트리거 `.click()` + `await sleep(...)` 후 `return` → CDP context 끊김 → "Inspected target navigated or closed" → 재시도 turn 누적 (실측 사례: 181s 사이클) | **navigation은 IIFE에서 완전히 분리**. `batch "<trigger>" "wait --url '**/dest'" "<verify>"` 패턴 사용. `wait --url` / `wait --load networkidle`이 navigation 완료를 정확히 감지. |
-| **Hydration race after cross-route nav** | 매칭 탭 없어 `location.href=...` / `open <url>`로 새 라우트 진입 직후 eval → `__reactProps$` 미부착으로 `.click()` 무반응 | `batch "open <url>" "wait --load networkidle" "find text '...' click"` 한 줄. wait --load 끝나면 hydration 완료 보장. |
-| **외부 sleep + tab list 폴링** | navigation 후 결과 확인을 `sleep 1.5; agent-browser tab list \| grep ...` 식으로 폴링 (Bash turn 다수 누적) | `wait --url '**/dest'` 1콜로 끝. batch 안에 넣으면 LLM turn도 1번. |
-| CLI 호출 누적 | step마다 agent-browser 따로 호출 | navigation 동반은 `batch`, 같은 페이지 내는 eval IIFE — `agent-browser` 스킬 "Tool Selection Hierarchy" 참고. |
-| **자체 브라우저 spawn** | `--cdp` 없이 `agent-browser open ...` 호출 → 별도 Chrome 띄움 | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것 (절대 자체 spawn 금지). |
-| 자동 수정 폭주 | 한 번 실패 후 계속 수정 시도 | 최대 2회. 누적 50줄 추가 시 즉시 에스컬레이션. |
-| Sentinel 누락 | 검증 후 hash 기록 안 함 → 다음 Stop에서 또 발화 | PASS/SKIP/인프라 에러 시 반드시 sentinel 기록. |
-| **open으로 엉뚱한 탭 오염** | `tab list` 확인 없이 `open <url>` 날림 → 현재 활성 탭(다른 포트/라우트)이 URL 변경됨 | 항상 `tab list` 먼저 → 목적 탭 `tab t<N>` switch. 매칭 탭이 아예 없을 때만 `open` 사용 (이때도 `batch "open <url>" "wait --load networkidle"`로 묶기). |
-| **`&&` 체인에서 탭 컨텍스트 소실** | `tab t<N> >/dev/null && eval "..."` 처럼 `&&`로 묶으면 eval이 이전 switch 컨텍스트를 잃고 활성 탭(다른 탭)에서 실행됨 | `tab t<N>` 과 이후 `eval`은 **별도 Bash tool call** 2개로 분리. 같은 `&&` 체인에 묶지 말 것. (참고: `batch`는 같은 daemon process 내부 순차 실행이므로 이 함정 없음 — `tab t<N>` 후 `batch "..."` 호출은 안전.) |
+| 실수 | 방지 |
+|---|---|
+| **★ Navigation을 IIFE에 묶음** (실측 181s 폭주 사례) | navigation은 batch step으로 분리. `batch "<trigger>" "wait --url '**/dest'" "<verify>"`. IIFE 안에서 `location.href`/`reload`/router-click + `await sleep` + `return` 금지. |
+| **풀 시퀀스 over-engineering** | Tier Selection으로 light path 진입. 한 줄 변경에 서브에이전트 풀 dispatch 금지. |
+| **잘못된 탭 캡처** | tab switch 후 IIFE 안에서 `location.pathname` 재검증. mismatch면 사용자 안내 + 종료 (자동 navigate 강제 X). |
+| **자체 브라우저 spawn** | 모든 호출에 `--cdp 9223` 필수. 9223 미응답이면 FAIL로 끊을 것. |
+| **메인 컨텍스트 오염** | Full path는 항상 서브에이전트로 dispatch. Light path는 메인 직접 OK 단, 결과 50줄 이내. |
+| **Sentinel 누락** | PASS/SKIP/인프라 에러 시 반드시 hash 기록. |
+
+> 도구 사용 관련 실수 (`&&` 탭 컨텍스트 소실 / `open`으로 탭 오염 / 외부 sleep 폴링 / 뷰포트 변경 등)는 `agent-browser` 스킬의 "Navigation Boundary" + "안 쓰는 패턴" 참고.
