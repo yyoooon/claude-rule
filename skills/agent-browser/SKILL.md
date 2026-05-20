@@ -358,24 +358,16 @@ agent-browser --cdp 9223 unroute   # 끝나면 정리
 
 → 콘솔만 보고 "이상 없음" 단정 금지. **네트워크 탭 같이** 볼 것.
 
-### 디버깅 dump 표준 (한 콜로 종합)
-
-문제 재현 후 한 번에:
+### 디버깅 dump 표준 (한 콜)
 
 ```bash
 agent-browser --cdp 9223 eval '
 (() => ({
   url: location.pathname,
-  title: document.title,
-  visibleText: document.body.innerText.slice(0, 500),
-  errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")]
-    .map(el => el.textContent?.trim().slice(0, 200)),
-  inputs: [...document.querySelectorAll("input")]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ name: el.name, type: el.type, value: el.value, valid: el.validity.valid })),
+  errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")].map(el => el.textContent?.trim().slice(0, 200)),
+  inputs: [...document.querySelectorAll("input")].filter(el => el.offsetParent).map(el => ({ name: el.name, value: el.value, valid: el.validity.valid })),
   storage: { local: { ...localStorage }, cookie: document.cookie },
-}))()
-' && agent-browser --cdp 9223 console --json | head -30
+}))()'
 ```
 
 ---
