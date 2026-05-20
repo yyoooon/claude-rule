@@ -301,9 +301,9 @@ agent-browser --cdp 9223 eval '
 
 "다음 UI는 진짜 모르는" 케이스 (동적 폼, 조건부 분기) 한정으로만 중간 dump 허용.
 
-### 전체 플로우 IIFE — trace + 실패 시 dumpDom
+### 전체 플로우 IIFE 패턴
 
-각 단계마다 trace 누적, 실패 시 DOM dump 같이 반환. 별도 호출 없이 한 콜 안에서 디버깅 컨텍스트 다 잡힘.
+각 단계마다 trace 누적, 실패 시 dumpDom 같이 반환. 한 콜로 디버깅 컨텍스트 다 잡힘.
 
 ```js
 (async () => {
@@ -311,63 +311,30 @@ agent-browser --cdp 9223 eval '
   const findBtn = (txt, root=document) => [...root.querySelectorAll("button, [role=button]")]
     .filter(el => el.offsetParent !== null)
     .find(el => el.textContent?.trim() === txt);
-  const waitFor = async (predicate, timeout=3000) => {
+  const waitFor = async (pred, ms=3000) => {
     const t0 = Date.now();
-    while (Date.now() - t0 < timeout) {
-      const r = predicate();
-      if (r) return r;
-      await sleep(50);
-    }
+    while (Date.now() - t0 < ms) { const r = pred(); if (r) return r; await sleep(50); }
     return null;
   };
-
   const traces = [];
-  const trace = (label, extra={}) => traces.push({
-    step: traces.length + 1, label, url: location.pathname, ...extra
-  });
+  const trace = (label, extra={}) => traces.push({ step: traces.length+1, label, ...extra });
   const dumpDom = () => ({
     visibleText: document.body.innerText.slice(0, 300),
-    visibleBtns: [...document.querySelectorAll("button, [role=button]")]
-      .filter(el => el.offsetParent !== null)
-      .map(el => el.textContent?.trim().slice(0, 40)).filter(Boolean),
-    errorEls: [...document.querySelectorAll("[role=alert], .error, [data-error]")]
-      .map(el => el.textContent?.trim().slice(0, 200)),
+    errorEls: [...document.querySelectorAll("[role=alert], .error")].map(el => el.textContent?.trim().slice(0, 200)),
   });
 
-  // step 1
-  const action = findBtn("Record Your Weight");
-  if (!action) { trace("action NOT FOUND", dumpDom()); return { ok: false, traces }; }
-  action.click();
-  trace("clicked action");
-
-  // step 2 — 모달 폴링
-  const logNow = await waitFor(() => {
-    const d = document.querySelector("[role=dialog]");
-    return d ? findBtn("Log Now", d) : null;
-  });
-  if (!logNow) { trace("Log Now WAIT FAILED", dumpDom()); return { ok: false, traces }; }
-  logNow.click();
-  trace("clicked Log Now");
-
-  // step 3 — React input
+  findBtn("Record Weight")?.click(); trace("opened modal");
   const input = await waitFor(() => document.querySelector("input[inputmode=decimal]"));
-  if (!input) { trace("input NOT FOUND", dumpDom()); return { ok: false, traces }; }
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-  setter.call(input, "60.5");
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  trace("input filled");
-
-  // step 4
-  findBtn("Confirm")?.click();
-  trace("clicked Confirm");
-
+  if (!input) { trace("input not found", dumpDom()); return { ok: false, traces }; }
+  setReactValue(input, "60.5"); trace("filled");
+  findBtn("Confirm")?.click(); trace("submitted");
   return { ok: true, traces };
 })()
 ```
 
 ### React Input Fill — setter 필수
 
-`input.value = "60"` 직접 대입은 React가 안 감지. 항상:
+`input.value = "60"` 직접 대입은 React가 안 감지:
 
 ```js
 const setReactValue = (el, val) => {
@@ -380,12 +347,7 @@ const setReactValue = (el, val) => {
 
 ### 고정 sleep 대신 element waitFor
 
-```js
-findBtn("Log Now").click();
-await waitFor(() => document.querySelector("input[inputmode=decimal]"));  // 떴으면 즉시 진행
-```
-
-라우트 변경 후 첫 paint까지 평균 200-400ms. 고정 `sleep(1500)`는 그 차이만큼 화면에 텀으로 보임.
+같은 페이지 내 모달/요소 등장은 `waitFor` 50ms 폴링 (200-400ms 안에 끝남). 페이지 전환은 IIFE 밖 `wait --url`/`wait --load` 사용.
 
 ---
 
