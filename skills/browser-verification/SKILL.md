@@ -527,7 +527,9 @@ git diff 본문 (최대 300줄, 이상이면 head -300 + "...(truncated)"):
 - computedStyle 비교, 픽셀 단위 검증
 - 전체 DOM snapshot dump (snapshot 명령 자제 — eval로 필요 정보만 추출)
 - 50줄 이상 결과 출력
-- step별로 따로 agent-browser CLI 호출 (멀티스텝은 한 bash 줄에 `&&` 체이닝 또는 eval IIFE 1콜로 합칠 것 — LLM tool turn이 가장 큰 비용)
+- step별로 따로 agent-browser CLI 호출 (멀티스텝은 `batch` 또는 eval IIFE 1콜로 합칠 것 — LLM tool turn이 가장 큰 비용)
+- **IIFE 안에서 `location.href` / `location.reload()` / navigation 트리거 click + `await sleep` + return** (CDP race로 재시도 turn 폭주). `batch "<trigger>" "wait --url '**/...'" "<verify>"`로 분리.
+- **navigation 후 외부 `sleep + tab list`로 폴링** — `wait --url` 1콜로 해결됨.
 ```
 
 ### 리턴 형식
