@@ -92,6 +92,51 @@ After running:
 - Tell the user the port mapping (e.g., `login → 3001`) so they know which dev server hits which port.
 - If dev servers don't come up, point the user to `.worktrees/<suffix>/dev.log` for the dev server output.
 
+## Post-Spawn: Browser Tab Wiring
+
+spawn.sh 완료 직후, Chrome 9223이 떠있으면 PORT→탭ID 매핑을 자동으로 저장하고 각 세션에 전달한다.
+
+### 절차
+
+1. **Chrome 9223 확인**
+   ```bash
+   agent-browser --cdp 9223 tab list 2>&1
+   ```
+   응답 없으면 이 단계 전체 스킵 (조용히 넘어감 — 필수 아님).
+
+2. **PORT → tab ID 매핑 추출**
+   `tab list` 출력에서 `http://localhost:<PORT>/` 패턴으로 각 워크트리 포트와 매칭.
+
+3. **메모리 저장** — `$PROJECT_MEMORY/reference_webview_chrome_tabs.md` 갱신
+   ```markdown
+   | Worktree | PORT | Tab ID |
+   |---|---|---|
+   | .worktrees/a | 3001 | t<N> |
+   | .worktrees/b | 3002 | t<N> |
+   ...
+   ```
+   파일이 없으면 새로 생성, 있으면 표 부분만 덮어쓴다.
+   `$PROJECT_MEMORY` = `~/.claude/projects/<encoded-project-path>/memory/`
+
+4. **각 세션에 cmux send** — spawn.sh가 반환한 surface ID 기준
+   ```bash
+   cmux send --surface surface:N "이 워크트리의 검증용 Chrome 탭 ID는 t<N> (PORT <PORT>)야. browser-verification 스킬 Step 2에서 tab list 없이 바로 이 ID 써줘."
+   cmux send-key --surface surface:N "enter"
+   ```
+
+5. **MEMORY.md 포인터 확인** — `reference_webview_chrome_tabs.md` 항목이 없으면 추가.
+
+### 스킵 조건
+
+- Chrome 9223 미응답 → 전체 스킵, 사용자에게 알리지 않음
+- 특정 PORT에 매칭 탭 없음 → 해당 워크트리만 스킵, 나머지 계속
+
+### 재실행 시
+
+`relaunch.sh` 후에도 동일하게 실행한다 — 탭 ID가 바뀔 수 있으므로.
+
+---
+
 ## Finishing (merge + cleanup)
 
 When the work is done, fold the worktree branches back into the source branch and tear everything down. Run from the main checkout while on the **same source branch** the worktrees were spawned from.
