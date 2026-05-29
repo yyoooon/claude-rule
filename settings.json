@@ -23,6 +23,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__browser-verifier__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/scripts/browser-verifier-skill-gate.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -42,6 +54,16 @@
             "command": "$HOME/.claude/hooks/post-tool-use/post-edit-format.sh",
             "timeout": 30,
             "statusMessage": "Linting & formatting…"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/scripts/skill-invoke-mark.sh",
+            "timeout": 5
           }
         ]
       }
