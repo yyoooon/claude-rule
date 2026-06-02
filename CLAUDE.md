@@ -121,6 +121,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - 첫 줄에 결론 있나?
 - 질문 복잡도에 맞는 길이인가? (단순 질문에 과한 구조 X)
 - 5줄 넘는 단락 없나?
+- 문장이 짧고 쉬운가? (만연체·번역투·어려운 한자어 없나)
 - 비교/옵션은 표로 했나?
 - 코드/명령은 별도 블록인가?
 - 처음 쓰는 전문 용어 풀이했나?
