@@ -10,7 +10,6 @@
     ],
     "defaultMode": "dontAsk"
   },
-  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -19,18 +18,6 @@
             "type": "command",
             "command": "prompt=$(jq -r '.prompt'); if echo \"$prompt\" | grep -q '안드로이드 연결'; then $HOME/.claude/hooks/user-prompt-submit/adb-connect-wifi.sh | jq -R -s '{systemMessage: .}'; fi",
             "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "mcp__browser-verifier__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/scripts/browser-verifier-skill-gate.sh",
-            "timeout": 5
           }
         ]
       }
@@ -87,7 +74,8 @@
   "enabledPlugins": {
     "figma@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "claude-telemetry@jeongph-claude-telemetry": true
+    "claude-telemetry@jeongph-claude-telemetry": true,
+    "browser-verifier@yyoooon": true
   },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
@@ -100,6 +88,12 @@
       "source": {
         "source": "github",
         "repo": "jeongph/claude-telemetry"
+      }
+    },
+    "yyoooon": {
+      "source": {
+        "source": "github",
+        "repo": "yyoooon/browser-verifier-mcp"
       }
     }
   },
