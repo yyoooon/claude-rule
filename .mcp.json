@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "Framelink Figma MCP": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--figma-api-key=",
+        "--stdio"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9223"
+      ]
+    },
+    "webview-test": {
+      "command": "node",
+      "args": ["/Users/yoon/Desktop/HURAY/webview-test-mcp/dist/index.js"]
+    },
+    "swagger-api": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "apidog-mcp-server@latest",
+        "--oas="
+      ]
+    }
+  }
+}
