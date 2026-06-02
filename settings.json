@@ -43,27 +43,6 @@
             "statusMessage": "Linting & formatting…"
           }
         ]
-      },
-      {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/scripts/skill-invoke-mark.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/scripts/browser-verify-gate.sh"
-          }
-        ]
       }
     ]
   },
