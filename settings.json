@@ -54,7 +54,10 @@
     "figma@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "claude-telemetry@jeongph-claude-telemetry": true,
-    "browser-verifier@yyoooon": true
+    "fe-toolkit@huray": true,
+    "browser-verifier@yyoooon": true,
+    "secondbrain@huray": true,
+    "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
@@ -69,6 +72,12 @@
         "repo": "jeongph/claude-telemetry"
       }
     },
+    "huray": {
+      "source": {
+        "source": "github",
+        "repo": "huraypositive/huray-marketplace"
+      }
+    },
     "yyoooon": {
       "source": {
         "source": "github",
@@ -76,5 +85,6 @@
       }
     }
   },
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "tui": "fullscreen"
 }
