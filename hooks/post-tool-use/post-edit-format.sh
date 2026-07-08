@@ -28,24 +28,31 @@ is_missing_tool() {
 
 tmp=$(mktemp)
 
-# ESLint --fix
+# Prettier --write — only when the project actually configures Prettier
+# (resolvable .prettierrc / package.json "prettier" / etc. for this file).
+# `--find-config-path` exits non-zero when no config is found, in which case we
+# skip Prettier and let ESLint's own formatting rules govern (avoids a default-
+# config Prettier fighting the project's ESLint style, e.g. quote style).
+if npx --no-install prettier --find-config-path "$f" >/dev/null 2>&1; then
+  prettier_out=$(npx --no-install prettier --write "$f" 2>&1)
+  prettier_rc=$?
+  if [ "$prettier_rc" -ne 0 ] && ! is_missing_tool "$prettier_out"; then
+    {
+      echo "[post-edit-format] Prettier failed for $f (exit $prettier_rc):"
+      echo "$prettier_out"
+      echo ""
+    } >> "$tmp"
+  fi
+fi
+
+# ESLint --fix — runs last so the project's ESLint config (including any
+# integrated formatting rules) has the final say.
 eslint_out=$(npx --no-install eslint --fix "$f" 2>&1)
 eslint_rc=$?
 if [ "$eslint_rc" -ne 0 ] && ! is_missing_tool "$eslint_out"; then
   {
     echo "[post-edit-format] ESLint reported issues in $f (exit $eslint_rc):"
     echo "$eslint_out"
-    echo ""
-  } >> "$tmp"
-fi
-
-# Prettier --write
-prettier_out=$(npx --no-install prettier --write "$f" 2>&1)
-prettier_rc=$?
-if [ "$prettier_rc" -ne 0 ] && ! is_missing_tool "$prettier_out"; then
-  {
-    echo "[post-edit-format] Prettier failed for $f (exit $prettier_rc):"
-    echo "$prettier_out"
   } >> "$tmp"
 fi
 
