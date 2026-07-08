@@ -164,22 +164,8 @@ UI/컴포넌트/화면을 만들 때는 `ui-implementation` 스킬을 따른다 
 
 ---
 
-## 외부 도구 접근
-
-### Notion — SecondBrain 토큰으로 API 직접 호출
-Notion 접근 시 **claude.ai Notion MCP OAuth 인증을 하지 말 것.** SecondBrain 플러그인에 저장된 Internal Integration 토큰(`SB_NOTION_TOKEN`, `ntn_...`)으로 Notion REST API를 직접 호출한다.
-
-**토큰 로딩** (버전 무관, 최신 secrets.env 자동 선택):
-```bash
-set -a; source "$(ls -d ~/.claude/plugins/cache/huray/secondbrain/*/config/secrets.env | sort -V | tail -1)"; set +a
-```
-
-**호출 규칙:**
-- 헤더: `Authorization: Bearer $SB_NOTION_TOKEN`, `Notion-Version: 2022-06-28`, `Content-Type: application/json`
-- 페이지 생성 전 `POST https://api.notion.com/v1/search`로 **접근 가능한 부모(페이지/DB)를 먼저 확인**한다 (통합에 공유된 것만 접근 가능).
-- 자주 쓰는 대상: **"TODO" DB** id `83080cab-57c3-479e-8fe5-d52ccf6bc4a0` (속성: Name=title, Status=status[Not started/Today/In progress/wait/Done], project=multi_select, Date=date).
-- DB에 항목 생성: `POST /v1/pages` + `parent.database_id` + `properties`.
-
-**주의:** 토큰 값은 로그·출력·커밋에 절대 노출하지 말 것 (마스킹).
+## Notion 접근
+claude.ai OAuth 말고 SecondBrain 토큰으로 API 직접 호출: `set -a; source "$(ls -d ~/.claude/plugins/cache/huray/secondbrain/*/config/secrets.env|sort -V|tail -1)"; set +a` → `curl`에 `Authorization: Bearer $SB_NOTION_TOKEN`, `Notion-Version: 2022-06-28`.
+생성 전 `POST /v1/search`로 부모 확인(TODO DB id `83080cab-57c3-479e-8fe5-d52ccf6bc4a0`). 토큰 값 노출 금지.
 
 
