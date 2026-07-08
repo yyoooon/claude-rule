@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # PostToolUse hook: auto-format files Claude edits.
-# Runs ESLint --fix then Prettier --write. On real failures (tool installed
-# but exited non-zero), surfaces output via {"systemMessage": ...} so Claude
-# sees it in the next turn. Silently skips when tools aren't installed locally.
-# Always exits 0.
+# Runs Prettier --write (only when the project has a resolvable Prettier config)
+# then ESLint --fix last, so each project's own config wins. Projects that
+# delegate formatting to ESLint (e.g. @huray/eslint-config-*) have no standalone
+# Prettier config, so Prettier is skipped and ESLint governs. On real failures
+# (tool installed but exited non-zero), surfaces output via {"systemMessage": ...}
+# so Claude sees it in the next turn. Silently skips when tools aren't installed
+# locally. Always exits 0.
 
 set -u
 

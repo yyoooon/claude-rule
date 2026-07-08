@@ -54,7 +54,7 @@
     "figma@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "claude-telemetry@jeongph-claude-telemetry": true,
-    "fe-toolkit@huray": true,
+    "fe-toolkit@huray": false,
     "browser-verifier@yyoooon": true,
     "secondbrain@huray": true,
     "frontend-design@claude-plugins-official": true
@@ -85,6 +85,6 @@
       }
     }
   },
-  "skipDangerousModePermissionPrompt": true,
-  "tui": "fullscreen"
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true
 }
