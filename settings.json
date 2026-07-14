@@ -57,7 +57,8 @@
     "fe-toolkit@huray": true,
     "browser-verifier@yyoooon": true,
     "secondbrain@huray": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "webview-test@webview-test-mcp": true
   },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
@@ -82,6 +83,12 @@
       "source": {
         "source": "github",
         "repo": "yyoooon/browser-verifier-mcp"
+      }
+    },
+    "webview-test-mcp": {
+      "source": {
+        "source": "github",
+        "repo": "yyoooon/webview-test-mcp"
       }
     }
   },
